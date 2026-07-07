@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gestion des Clients" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Clients" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary font-weight-bold">
+                <i class="fa-solid fa-users text-primary me-2"></i>
+                {% trans "Table des clients" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Liste de tous les clients et partenaires du laboratoire" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'commercial:client_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouveau Client" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- FILTERS CONTAINER -->
+<div class="card shadow-sm border-0 mb-4 bg-light">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-secondary">{% trans "NOM CONTIENT ...." %}</label>
+                <input type="text" name="nom_contient" class="form-control" placeholder="{% trans 'Rechercher...' %}" value="{{ request.GET.nom_contient }}">
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-secondary">{% trans "NOM COMMENCE PAR ...." %}</label>
+                <input type="text" name="nom_commence" class="form-control" placeholder="{% trans 'Commence par...' %}" value="{{ request.GET.nom_commence }}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-search me-1"></i> {% trans "Filtrer" %}
+                </button>
+                <a href="{% url 'commercial:client_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TABLE -->
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="clientsTable">
+                <thead style="background-color: #e6edf7; color: #1a3052;">
+                    <tr>
+                        <th>{% trans "Code" %}</th>
+                        <th>{% trans "Nom" %}</th>
+                        <th>{% trans "Ville" %}</th>
+                        <th>{% trans "Tel I" %}</th>
+                        <th>{% trans "Tel II" %}</th>
+                        <th>{% trans "IF" %}</th>
+                        <th>{% trans "ICE" %}</th>
+                        <th>{% trans "mle" %}</th>
+                        <th class="text-end" style="width: 120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr>
+                        <td class="fw-bold text-secondary">{{ client.id }}</td>
+                        <td class="fw-semibold text-dark">{{ client.nom }}</td>
+                        <td>{{ client.ville|default:"-" }}</td>
+                        <td>{{ client.telephone }}</td>
+                        <td>{{ client.telephone_2|default:"-" }}</td>
+                        <td>{{ client.if_fiscal|default:"-" }}</td>
+                        <td><code class="text-muted">{{ client.ice|default:"-" }}</code></td>
+                        <td>{{ client.mle|default:"-" }}</td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{% url 'commercial:client_update' client.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                <a href="{% url 'commercial:client_delete' client.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Supprimer' %}">
+                                    <i class="fa-solid fa-trash text-danger"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
+                            {% trans "Aucun client enregistré" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#clientsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[0, 'asc']],
+            columnDefs: [
+                { orderable: false, targets: 8 }
+            ],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

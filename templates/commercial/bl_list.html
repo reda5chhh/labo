@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Bons de Livraison" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Bons de Livraison" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary font-weight-bold">
+                <i class="fa-solid fa-truck-ramp-box text-primary me-2"></i>
+                {% trans "4.1.9 Bon de Livraison" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Suivi et contrôle de la remise physique des rapports et procès-verbaux" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'commercial:bl_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Créer un BL" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- TOP TABLE: Bons de Livraison -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">{% trans "Bons de Livraison Émis" %}</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="blsTable">
+                <thead style="background-color: #e6edf7; color: #1a3052;">
+                    <tr>
+                        <th>{% trans "Référence" %}</th>
+                        <th>{% trans "Date" %}</th>
+                        <th>{% trans "Nom" %}</th>
+                        <th>{% trans "Saisie le" %}</th>
+                        <th>{% trans "Date d'envoi" %}</th>
+                        <th>{% trans "Envoi par" %}</th>
+                        <th class="text-center" style="width: 130px;">{% trans "Envoyé" %}</th>
+                        <th class="text-center" style="width: 100px;">{% trans "Accusé" %}</th>
+                        <th class="text-end" style="width: 120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bl in bls %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ bl.reference }}</td>
+                        <td>{{ bl.date_bl|date:"d/m/Y" }}</td>
+                        <td>{{ bl.destinataire }}</td>
+                        <td>{{ bl.saisie_le|date:"d/m/Y H:i" }}</td>
+                        <td>{{ bl.date_envoi|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ bl.envoi_par|default:"-" }}</td>
+                        <td class="text-center">
+                            {% if bl.envoye %}
+                            <span class="badge bg-success-soft text-success"><i class="fa-solid fa-check"></i> {% trans "Oui" %}</span>
+                            {% else %}
+                            <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2" data-bs-toggle="modal" data-bs-target="#sendModal{{ bl.id }}">
+                                <i class="fa-solid fa-paper-plane me-1"></i> {% trans "Envoyer" %}
+                            </button>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <form method="post" action="{% url 'commercial:bl_toggle_accuse' bl.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-link p-0 border-0" style="text-decoration:none;" title="{% trans "Basculer l'état d'accusé" %}">
+                                    {% if bl.accuse %}
+                                    <span class="badge bg-success-soft text-success" style="cursor:pointer;"><i class="fa-solid fa-check"></i></span>
+                                    {% else %}
+                                    <span class="badge bg-danger-soft text-danger" style="cursor:pointer;"><i class="fa-solid fa-xmark"></i></span>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{% url 'commercial:bl_detail' bl.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Détail' %}">
+                                    <i class="fa-solid fa-eye text-secondary"></i>
+                                </a>
+                                <a href="{% url 'commercial:bl_update' bl.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                <a href="{% url 'commercial:bl_delete' bl.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Supprimer' %}">
+                                    <i class="fa-solid fa-trash text-danger"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Modal Send for each BL -->
+                    {% if not bl.envoye %}
+                    <div class="modal fade" id="sendModal{{ bl.id }}" tabindex="-1" aria-labelledby="sendModalLabel{{ bl.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="post" action="{% url 'commercial:bl_mark_sent' bl.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="sendModalLabel{{ bl.id }}">{% trans "Enregistrer l'envoi" %} - {{ bl.reference }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-start">
+                                        <div class="mb-3">
+                                            <label for="date_envoi{{ bl.id }}" class="form-label fw-semibold">{% trans "Date d'envoi" %}</label>
+                                            <input type="date" class="form-control" id="date_envoi{{ bl.id }}" name="date_envoi" required value="{% now 'Y-m-d' %}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="envoi_par{{ bl.id }}" class="form-label fw-semibold">{% trans "Envoi par / Coursier" %}</label>
+                                            <input type="text" class="form-control" id="envoi_par{{ bl.id }}" name="envoi_par" placeholder="Ex: M. Ahmed, Coursier, Poste, etc." required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                                        <button type="submit" class="btn btn-primary">{% trans "Confirmer l'envoi" %}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
+                            {% trans "Aucun bon de livraison enregistré" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

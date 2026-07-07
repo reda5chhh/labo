@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ reception.num_reception }} — {% trans "Détail Réception" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Technique" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'technique:reception_list' %}">{% trans "Réceptions" %}</a></li>
+<li class="breadcrumb-item active">{{ reception.num_reception }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-flask text-primary me-2"></i>
+                {{ reception.num_reception }}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Fiche de réception d'échantillon" %}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'technique:reception_update' reception.pk %}" class="btn btn-primary">
+                <i class="fa-solid fa-pencil me-1"></i> {% trans "Modifier" %}
+            </a>
+            <a href="{% url 'technique:reception_list' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i> {% trans "Retour" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Informations principales -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="fa-solid fa-circle-info text-primary me-2"></i>
+                    {% trans "Informations de la Réception" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "N° Réception" %}</label>
+                        <p class="fw-bold fs-6 mb-0">{{ reception.num_reception }}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "Date de réception" %}</label>
+                        <p class="fw-semibold mb-0">{{ reception.date_reception|date:"d/m/Y" }}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "Client" %}</label>
+                        <p class="fw-semibold mb-0">{{ reception.client.nom }}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "Dossier" %}</label>
+                        <p class="mb-0">
+                            {% if reception.dossier %}
+                            <a href="{% url 'commercial:dossier_detail' reception.dossier.pk %}">{{ reception.dossier.reference }}</a>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "Nature de l'échantillon" %}</label>
+                        <p class="mb-0">{{ reception.nature_echantillon }}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "Chargé de prélèvement" %}</label>
+                        <p class="mb-0">{{ reception.charge_prelevement|default:"—" }}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "N° Bordereau d'envoi" %}</label>
+                        <p class="mb-0"><code>{{ reception.bordereau|default:"—" }}</code></p>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="small text-muted fw-semibold text-uppercase">{% trans "Facture liée" %}</label>
+                        <p class="mb-0">{{ reception.facture|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statuts -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="fa-solid fa-chart-simple text-primary me-2"></i>
+                    {% trans "Statuts" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="small text-muted fw-semibold text-uppercase d-block mb-1">{% trans "État de l'essai" %}</label>
+                    {% if reception.etat_essai == 'TERMINE' %}
+                    <span class="badge-status badge-status-success">
+                        <i class="fa-solid fa-circle-check"></i> {{ reception.get_etat_essai_display }}
+                    </span>
+                    {% elif reception.etat_essai == 'EN_COURS' %}
+                    <span class="badge-status badge-status-info">
+                        <i class="fa-solid fa-spinner"></i> {{ reception.get_etat_essai_display }}
+                    </span>
+                    {% else %}
+                    <span class="badge-status badge-status-warning">
+                        <i class="fa-solid fa-clock"></i> {{ reception.get_etat_essai_display }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="small text-muted fw-semibold text-uppercase d-block mb-1">{% trans "État du rapport" %}</label>
+                    {% if reception.etat_rapport == 'VALIDE' %}
+                    <span class="badge-status badge-status-success">
+                        <i class="fa-solid fa-file-circle-check"></i> {{ reception.get_etat_rapport_display }}
+                    </span>
+                    {% else %}
+                    <span class="badge-status badge-status-neutral">
+                        <i class="fa-regular fa-file"></i> {{ reception.get_etat_rapport_display }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Métadonnées -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-3">
+                <p class="small text-muted mb-1">
+                    <i class="fa-solid fa-user-plus me-1"></i>
+                    {% trans "Créé par" %} <strong>{{ reception.created_by|default:"—" }}</strong>
+                </p>
+                <p class="small text-muted mb-1">
+                    <i class="fa-solid fa-calendar-plus me-1"></i>
+                    {% trans "Le" %} {{ reception.created_at|date:"d/m/Y H:i" }}
+                </p>
+                {% if reception.updated_by %}
+                <p class="small text-muted mb-0">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>
+                    {% trans "Modifié par" %} <strong>{{ reception.updated_by }}</strong>
+                    {% trans "le" %} {{ reception.updated_at|date:"d/m/Y H:i" }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

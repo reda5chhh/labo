@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Factures Fournisseurs" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Factures Fournisseurs" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-file-invoice text-primary me-2"></i>
+                {% trans "Factures Fournisseurs" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Enregistrement des factures d'achat et suivi des règlements fournisseurs" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'finance:facture_fournisseur_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouvelle Facture d'Achat" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="fournTable">
+                <thead>
+                    <tr>
+                        <th>{% trans "Réf Interne" %}</th>
+                        <th>{% trans "N° Facture Fourn." %}</th>
+                        <th>{% trans "Fournisseur" %}</th>
+                        <th>{% trans "Date Facture" %}</th>
+                        <th>{% trans "Total TTC" %}</th>
+                        <th>{% trans "Solde restant" %}</th>
+                        <th>{% trans "Échéance" %}</th>
+                        <th>{% trans "Statut" %}</th>
+                        <th class="text-end" style="width: 120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in factures %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ f.reference_interne }}</td>
+                        <td><code>{{ f.reference_fournisseur }}</code></td>
+                        <td class="fw-semibold text-dark">{{ f.fournisseur.nom }}</td>
+                        <td>{{ f.date_facture|date:"d/m/Y" }}</td>
+                        <td class="fw-bold">{{ f.montant_ttc }} DH</td>
+                        <td class="text-danger fw-semibold">{{ f.solde }} DH</td>
+                        <td>{{ f.date_echeance|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if f.statut == 'EN_ATTENTE' %}
+                            <span class="badge bg-warning text-dark">{% trans "En attente" %}</span>
+                            {% elif f.statut == 'PAYEE_PARTIEL' %}
+                            <span class="badge bg-info text-dark">{% trans "Partielle" %}</span>
+                            {% elif f.statut == 'PAYEE' %}
+                            <span class="badge bg-success">{% trans "Payée" %}</span>
+                            {% else %}
+                            <span class="badge bg-danger">{% trans "Annulée" %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if f.statut != 'PAYEE' and f.statut != 'ANNULEE' %}
+                            <a href="{% url 'finance:paiement_create' %}?facture_fournisseur={{ f.id }}" class="btn btn-sm btn-success" title="{% trans 'Enregistrer un paiement' %}">
+                                <i class="fa-solid fa-credit-card me-1"></i>{% trans "Payer" %}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#fournTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[3, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 8 }
+            ],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

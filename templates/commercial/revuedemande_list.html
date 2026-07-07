@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Revue de la demande, Appels d'offres et contrats" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Revue de la demande" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary font-weight-bold">
+                <i class="fa-solid fa-file-signature text-primary me-2"></i>
+                {% trans "Revue de la demande, Appels d'offres et contrats" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Études de faisabilité, revues de contrat et offres commerciales" %}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'commercial:revuedemande_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouvelle Revue" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- FILTERS CONTAINER -->
+<div class="card shadow-sm border-0 mb-4 bg-light">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Client" %}</label>
+                <select name="client" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for c in clients_list %}
+                    <option value="{{ c.id }}" {% if request.GET.client == c.id|stringformat:"i" %}selected{% endif %}>{{ c.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Réf" %}</label>
+                <input type="text" name="ref" class="form-control" placeholder="REV-..." value="{{ request.GET.ref }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Dossier" %}</label>
+                <select name="dossier" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for d in dossiers_list %}
+                    <option value="{{ d.id }}" {% if request.GET.dossier == d.id|stringformat:"i" %}selected{% endif %}>{{ d.reference }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Revue du" %}</label>
+                <input type="date" name="date_du" class="form-control" value="{{ request.GET.date_du }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Au" %}</label>
+                <input type="date" name="date_au" class="form-control" value="{{ request.GET.date_au }}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Accord client" %}</label>
+                <select name="accord_client" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    <option value="ACCORD" {% if request.GET.accord_client == 'ACCORD' %}selected{% endif %}>{% trans "Accordé" %}</option>
+                    <option value="REFUS" {% if request.GET.accord_client == 'REFUS' %}selected{% endif %}>{% trans "Refusé" %}</option>
+                    <option value="ATTENTE" {% if request.GET.accord_client == 'ATTENTE' %}selected{% endif %}>{% trans "En attente" %}</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Décision labo" %}</label>
+                <select name="decision_labo" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    <option value="ACCORD" {% if request.GET.decision_labo == 'ACCORD' %}selected{% endif %}>{% trans "Accordé" %}</option>
+                    <option value="REFUS" {% if request.GET.decision_labo == 'REFUS' %}selected{% endif %}>{% trans "Refusé" %}</option>
+                    <option value="ATTENTE" {% if request.GET.decision_labo == 'ATTENTE' %}selected{% endif %}>{% trans "En attente" %}</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-search me-1"></i> {% trans "Filtrer" %}
+                </button>
+                <a href="{% url 'commercial:revuedemande_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TOP TABLE: Revue des Demandes -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">{% trans "Table des revues des demandes, appels d'offres et contrats" %}</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="revuesTable">
+                <thead style="background-color: #e6edf7; color: #1a3052;">
+                    <tr>
+                        <th>{% trans "ID" %}</th>
+                        <th>{% trans "Référence" %}</th>
+                        <th>{% trans "Date de la demande" %}</th>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Projet" %}</th>
+                        <th>{% trans "Type de revue" %}</th>
+                        <th>{% trans "Décision" %}</th>
+                        <th>{% trans "Acceptation Client" %}</th>
+                        <th>{% trans "Dossier" %}</th>
+                        <th>{% trans "Réf pièce jointe" %}</th>
+                        <th class="text-end" style="width: 100px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in revues %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td class="fw-bold text-primary">{{ r.reference|default:"-" }}</td>
+                        <td>{{ r.date_demande|date:"d/m/Y" }}</td>
+                        <td class="fw-semibold text-dark">{{ r.client.nom }}</td>
+                        <td>{{ r.objet|truncatechars:40 }}</td>
+                        <td>{{ r.type_revue|default:"-" }}</td>
+                        <td>
+                            {% if r.decision_labo == 'ACCORD' %}
+                            <span class="badge bg-success-soft text-success">{% trans "Accordé" %}</span>
+                            {% elif r.decision_labo == 'REFUS' %}
+                            <span class="badge bg-danger-soft text-danger">{% trans "Refusé" %}</span>
+                            {% else %}
+                            <span class="badge bg-warning-soft text-warning">{% trans "En attente" %}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.accord_client == 'ACCORD' %}
+                            <span class="badge bg-success-soft text-success">{% trans "Accordé" %}</span>
+                            {% elif r.accord_client == 'REFUS' %}
+                            <span class="badge bg-danger-soft text-danger">{% trans "Refusé" %}</span>
+                            {% else %}
+                            <span class="badge bg-warning-soft text-warning">{% trans "En attente" %}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ r.dossier.reference|default:"-" }}</td>
+                        <td><code>{{ r.ref_piece_jointe|default:"-" }}</code></td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{% url 'commercial:revuedemande_update' r.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                <a href="{% url 'commercial:revuedemande_print' r.pk %}" target="_blank" class="btn btn-sm btn-icon" title="{% trans 'Imprimer' %}">
+                                    <i class="fa-solid fa-print text-secondary"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
+                            {% trans "Aucune revue enregistrée" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#revuesTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 10,
+            order: [[0, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

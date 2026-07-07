@@ -1,0 +1,13 @@
+# ============================================================
+# LABO.COS App — Dépendances de production (production.txt)
+# ============================================================
+-r base.txt
+
+# Serveur WSGI
+gunicorn==23.0.0
+
+# Monitoring & Logs
+sentry-sdk[django]==2.16.0
+
+# Sécurité renforcée
+django-csp==3.8

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Technique" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'technique:reception_list' %}">{% trans "Réceptions" %}</a></li>
+<li class="breadcrumb-item active">{{ titre }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1 class="page-title">
+        <i class="fa-solid fa-flask text-primary me-2"></i>
+        {{ titre }}
+    </h1>
+    <p class="page-subtitle text-muted">{% trans "Renseigner les informations de la réception d'échantillons" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-3">
+                <!-- N° Réception -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" for="id_num_reception">
+                        {{ form.num_reception.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.num_reception }}
+                    {% if form.num_reception.errors %}
+                    <div class="text-danger small mt-1">{{ form.num_reception.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Date de réception -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" for="id_date_reception">
+                        {{ form.date_reception.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.date_reception }}
+                    {% if form.date_reception.errors %}
+                    <div class="text-danger small mt-1">{{ form.date_reception.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Nature de l'échantillon -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" for="id_nature_echantillon">
+                        {{ form.nature_echantillon.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.nature_echantillon }}
+                    {% if form.nature_echantillon.errors %}
+                    <div class="text-danger small mt-1">{{ form.nature_echantillon.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Client -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="id_client">
+                        {{ form.client.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.client }}
+                    {% if form.client.errors %}
+                    <div class="text-danger small mt-1">{{ form.client.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Dossier -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="id_dossier">{{ form.dossier.label }}</label>
+                    {{ form.dossier }}
+                    {% if form.dossier.errors %}
+                    <div class="text-danger small mt-1">{{ form.dossier.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- État essai -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" for="id_etat_essai">{{ form.etat_essai.label }}</label>
+                    {{ form.etat_essai }}
+                    {% if form.etat_essai.errors %}
+                    <div class="text-danger small mt-1">{{ form.etat_essai.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- État rapport -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" for="id_etat_rapport">{{ form.etat_rapport.label }}</label>
+                    {{ form.etat_rapport }}
+                    {% if form.etat_rapport.errors %}
+                    <div class="text-danger small mt-1">{{ form.etat_rapport.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Chargé de prélèvement -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" for="id_charge_prelevement">{{ form.charge_prelevement.label }}</label>
+                    {{ form.charge_prelevement }}
+                    {% if form.charge_prelevement.errors %}
+                    <div class="text-danger small mt-1">{{ form.charge_prelevement.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Facture -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="id_facture">{{ form.facture.label }}</label>
+                    {{ form.facture }}
+                    {% if form.facture.errors %}
+                    <div class="text-danger small mt-1">{{ form.facture.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Bordereau -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="id_bordereau">{{ form.bordereau.label }}</label>
+                    {{ form.bordereau }}
+                    {% if form.bordereau.errors %}
+                    <div class="text-danger small mt-1">{{ form.bordereau.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'technique:reception_list' %}" class="btn btn-outline-secondary px-4">
+                    <i class="fa-solid fa-xmark me-1"></i> {% trans "Annuler" %}
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> {{ action }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

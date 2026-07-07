@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Facturation Clients" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>
+                {% trans "Factures Clients" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Suivi de la facturation, des encaissements et du recouvrement des créances" %}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'finance:facture_reception_list' %}" class="btn btn-outline-primary">
+                <i class="fa-solid fa-receipt me-1"></i>
+                {% trans "Facturer Réceptions" %}
+            </a>
+            <a href="{% url 'finance:facture_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouvelle Facture" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Table Principale des Factures -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">
+            <i class="fa-solid fa-list text-muted me-2"></i>{% trans "Table des factures" %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="facturesTable" style="cursor: pointer;">
+                <thead>
+                    <tr>
+                        <th>{% trans "N° Facture" %}</th>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Date Facture" %}</th>
+                        <th>{% trans "Total TTC" %}</th>
+                        <th>{% trans "Total Encaissé" %}</th>
+                        <th>{% trans "Solde" %}</th>
+                        <th>{% trans "Échéance" %}</th>
+                        <th>{% trans "Jours Retard" %}</th>
+                        <th>{% trans "Statut" %}</th>
+                        <th class="text-end" style="width: 150px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in factures %}
+                    <tr class="facture-row {% if forloop.first %}table-active{% endif %}"
+                        data-id="{{ f.id }}"
+                        data-reference="{{ f.reference }}"
+                        data-envoye="{% if f.envoye %}Oui{% else %}Non{% endif %}"
+                        data-envoye-par="{{ f.envoye_par.nom_complet|default:'—' }}"
+                        data-date-envoi="{{ f.date_envoi|date:'d/m/Y'|default:'—' }}"
+                        data-accuse="{% if f.accuse %}Oui{% else %}Non{% endif %}"
+                        data-date-accuse="{{ f.date_accuse|date:'d/m/Y'|default:'—' }}"
+                        data-reglement="{% if f.reglement_recu %}Oui{% else %}Non{% endif %}"
+                        data-date-reglement="{{ f.date_reglement|date:'d/m/Y'|default:'—' }}"
+                        data-statut="{{ f.statut }}"
+                        data-validee="{% if f.validee_par_signature %}true{% else %}false{% endif %}"
+                        data-difficulte="{{ f.difficulte_recouvrement }}"
+                        data-sign-url="{% url 'finance:facture_sign' f.id %}"
+                        data-recouvrement-url="{% url 'finance:facture_update_recouvrement' f.id %}">
+                        <td class="fw-bold text-primary">{{ f.reference }}</td>
+                        <td class="fw-semibold text-dark">{{ f.client.nom }}</td>
+                        <td>{{ f.date_facture|date:"d/m/Y" }}</td>
+                        <td class="fw-bold">{{ f.montant_ttc }} DH</td>
+                        <td class="text-success">{{ f.total_encaissements }} DH</td>
+                        <td class="text-danger fw-semibold">{{ f.solde }} DH</td>
+                        <td>{{ f.date_echeance|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if f.nombre_jours_retard > 0 %}
+                            <span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ f.nombre_jours_retard }} j</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if f.statut == 'BROUILLON' %}
+                            <span class="badge bg-secondary">{% trans "Brouillon" %}</span>
+                            {% elif f.statut == 'VALIDEE' %}
+                            <span class="badge bg-primary">{% trans "Validée" %}</span>
+                            {% elif f.statut == 'PAYEE_PARTIEL' %}
+                            <span class="badge bg-warning text-dark">{% trans "Partielle" %}</span>
+                            {% elif f.statut == 'PAYEE' %}
+                            <span class="badge bg-success">{% trans "Payée" %}</span>
+                            {% else %}
+                            <span class="badge bg-danger">{% trans "Annulée" %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end" onclick="event.stopPropagation();">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{% url 'finance:facture_detail' f.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Détails' %}">
+                                    <i class="fa-solid fa-eye text-secondary"></i>
+                                </a>
+                                {% if f.statut == 'BROUILLON' %}
+                                <a href="{% url 'finance:facture_update' f.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                {% endif %}
+                                {% if f.statut != 'PAYEE' and f.statut != 'ANNULEE' and f.validee_par_signature %}
+                                <a href="{% url 'finance:encaissement_create' %}?facture={{ f.id }}" class="btn btn-sm btn-icon" title="{% trans 'Enregistrer un encaissement' %}">
+                                    <i class="fa-solid fa-wallet text-success"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Section Inférieure : Détails de Suivi d'Envoi & Zone de Recouvrement -->
+<div class="row">
+    <!-- Table des détails (Logistique / Envoi) -->
+    <div class="col-lg-7 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark fw-bold">
+                    <i class="fa-solid fa-truck-ramp-box text-muted me-2"></i>{% trans "Table des détails de suivi d'envoi" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Étape / Statut" %}</th>
+                                <th>{% trans "État" %}</th>
+                                <th>{% trans "Opérateur / Date" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold">{% trans "Facture Envoyée" %}</td>
+                                <td id="detailEnvoye">Non</td>
+                                <td id="detailEnvoyeInfos">—</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">{% trans "Accusé Réception Client" %}</td>
+                                <td id="detailAccuse">Non</td>
+                                <td id="detailAccuseInfos">—</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">{% trans "Règlement Validé" %}</td>
+                                <td id="detailReglement">Non</td>
+                                <td id="detailReglementInfos">—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone de Recouvrement & Signature -->
+    <div class="col-lg-5 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark fw-bold">
+                    <i class="fa-solid fa-shield-halved text-muted me-2"></i>{% trans "Zone de validation & recouvrement" %}
+                </h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <!-- En-tête de la facture sélectionnée -->
+                    <h6 class="text-muted uppercase small mb-3">{% trans "Facture sélectionnée :" %} <strong class="text-dark" id="recouvFactureRef">—</strong></h6>
+                    
+                    <!-- Bouton Signature officielle -->
+                    <div class="mb-4" id="signatureBlock">
+                        <form method="post" id="signForm" action="">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning w-100 py-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                <i class="fa-solid fa-fingerprint fa-lg"></i>
+                                <span>{% trans "SIGNER LA FACTURE (OFFICIEL)" %}</span>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="alert alert-success d-none" id="signedAlert">
+                        <i class="fa-solid fa-circle-check me-2"></i>{% trans "Cette facture est signée et verrouillée." %}
+                    </div>
+                </div>
+
+                <!-- Difficulté de recouvrement -->
+                <div class="border-top pt-3">
+                    <form method="post" id="recouvrementForm" action="">
+                        {% csrf_token %}
+                        <label for="difficulteSelect" class="form-label fw-semibold">{% trans "Difficulté de Recouvrement" %}</label>
+                        <div class="input-group">
+                            <select name="difficulte" id="difficulteSelect" class="form-select">
+                                <option value="RECOUVRABLE">{% trans "Recouvrable" %}</option>
+                                <option value="DIFFICILE">{% trans "Difficile" %}</option>
+                                <option value="NON_RECOUVRABLE">{% trans "Non Recouvrable" %}</option>
+                            </select>
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fa-solid fa-rotate me-1"></i>{% trans "MAJ" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialiser DataTables
+        const table = $('#facturesTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 10,
+            order: [[2, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 9 }
+            ],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        // Fonction pour charger les détails de la facture sélectionnée
+        function updateDetails(row) {
+            const ref = row.data('reference');
+            const envoye = row.data('envoye');
+            const envoyePar = row.data('envoye-par');
+            const dateEnvoi = row.data('date-envoi');
+            const accuse = row.data('accuse');
+            const dateAccuse = row.data('date-accuse');
+            const reglement = row.data('reglement');
+            const dateReglement = row.data('date-reglement');
+            const validee = row.data('validee');
+            const difficulte = row.data('difficulte');
+            const signUrl = row.data('sign-url');
+            const recUrl = row.data('recouvrement-url');
+
+            // Mettre à jour la logistique
+            $('#detailEnvoye').html(envoye === 'Oui' ? '<span class="badge bg-success">Oui</span>' : '<span class="badge bg-secondary">Non</span>');
+            $('#detailEnvoyeInfos').text(envoye === 'Oui' ? `${envoyePar} le ${dateEnvoi}` : '—');
+            
+            $('#detailAccuse').html(accuse === 'Oui' ? '<span class="badge bg-success">Oui</span>' : '<span class="badge bg-secondary">Non</span>');
+            $('#detailAccuseInfos').text(accuse === 'Oui' ? `Reçu le ${dateAccuse}` : '—');
+
+            $('#detailReglement').html(reglement === 'Oui' ? '<span class="badge bg-success">Oui</span>' : '<span class="badge bg-secondary">Non</span>');
+            $('#detailReglementInfos').text(reglement === 'Oui' ? `Validé le ${dateReglement}` : '—');
+
+            // Mettre à jour la zone de recouvrement
+            $('#recouvFactureRef').text(ref);
+            $('#difficulteSelect').val(difficulte);
+            $('#recouvrementForm').attr('action', recUrl);
+
+            // Gérer le bouton de signature
+            if (validee === true) {
+                $('#signatureBlock').addClass('d-none');
+                $('#signedAlert').removeClass('d-none');
+            } else {
+                $('#signatureBlock').removeClass('d-none');
+                $('#signForm').attr('action', signUrl);
+                $('#signedAlert').addClass('d-none');
+            }
+        }
+
+        // Clic sur une ligne du tableau
+        $('#facturesTable tbody').on('click', 'tr', function() {
+            $('.facture-row').removeClass('table-active');
+            $(this).addClass('table-active');
+            updateDetails($(this));
+        });
+
+        // Initialiser avec la première ligne sélectionnée par défaut
+        const firstRow = $('.facture-row.table-active');
+        if (firstRow.length) {
+            updateDetails(firstRow);
+        }
+    });
+</script>
+{% endblock %}

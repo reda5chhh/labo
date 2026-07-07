@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}{% trans "Enregistrer un Paiement Fournisseur" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'finance:facture_fournisseur_list' %}">{% trans "Factures Fournisseurs" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Paiement" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-credit-card text-primary me-2"></i>
+        {% trans "Régler une Facture Fournisseur" %}
+    </h1>
+    <p class="page-subtitle">{% trans "Enregistrez le règlement émis à votre fournisseur pour mettre à jour son solde" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            {% crispy form %}
+            
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer le paiement" %}
+                </button>
+                <a href="{% url 'finance:facture_fournisseur_list' %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

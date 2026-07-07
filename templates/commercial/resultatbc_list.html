@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Enquêtes de Satisfaction Client" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Enquêtes Client" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-face-smile text-primary me-2"></i>
+                {% trans "Enquêtes de Satisfaction (Clôture BC)" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Évaluations de la satisfaction client et retours d'expérience" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'commercial:resultatbc_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouvelle Évaluation" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="resultatsTable">
+                <thead>
+                    <tr>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Dossier Projet" %}</th>
+                        <th>{% trans "Date d'Évaluation" %}</th>
+                        <th>{% trans "Note de Satisfaction" %}</th>
+                        <th>{% trans "Commentaires" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in resultats %}
+                    <tr>
+                        <td class="fw-semibold text-dark">{{ res.client.nom }}</td>
+                        <td class="fw-bold">{{ res.dossier.reference }}</td>
+                        <td>{{ res.date_evaluation|date:"d/m/Y" }}</td>
+                        <td>
+                            <div class="d-flex gap-1 align-items-center">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= res.note_satisfaction %}
+                                        <i class="fa-solid fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="fa-regular fa-star text-muted" style="opacity: 0.5;"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="ms-1 fw-bold text-dark">({{ res.note_satisfaction }}/5)</span>
+                            </div>
+                        </td>
+                        <td><span class="text-muted small">{{ res.commentaires|default:"—"|truncatechars:60 }}</span></td>
+                    </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#resultatsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[2, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

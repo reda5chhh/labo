@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}{% trans "Nouveau Mouvement Caisse" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'finance:caisse_list' %}">{% trans "Caisse" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Nouveau" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-cash-register text-primary me-2"></i>
+        {% trans "Enregistrer un Mouvement de Caisse" %}
+    </h1>
+    <p class="page-subtitle">{% trans "Renseignez les détails de l'entrée ou de la sortie de fonds de la petite caisse" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            {% crispy form %}
+            
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer le mouvement" %}
+                </button>
+                <a href="{% url 'finance:caisse_list' %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

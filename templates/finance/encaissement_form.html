@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}{% trans "Enregistrer un Encaissement" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'finance:encaissement_list' %}">{% trans "Encaissements" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Nouveau" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-wallet text-primary me-2"></i>
+        {% trans "Enregistrer un Encaissement" %}
+    </h1>
+    <p class="page-subtitle">{% trans "Renseignez les détails du règlement reçu pour mettre à jour le solde de la facture" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            {% crispy form %}
+            
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer le règlement" %}
+                </button>
+                <a href="{% url 'finance:encaissement_list' %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

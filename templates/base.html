@@ -1,0 +1,504 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}LABO.COS App — Système de Gestion de Laboratoire{% endblock %}">
+    <title>{% block title %}{% endblock %} | {{ LABO_NOM }} App</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- FontAwesome 6 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+
+    <!-- DataTables -->
+    <link href="https://cdn.datatables.net/2.1.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/3.1.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- LABO.COS CSS -->
+    <link href="{% static 'css/labocos.css' %}?v={% now 'U' %}" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- ============================================================
+     SIDEBAR — Navigation principale
+     ============================================================ -->
+<div class="sidebar" id="sidebar">
+    <!-- Logo & Titre -->
+    <a href="{% url 'core:dashboard' %}" class="sidebar-brand">
+        <img src="{{ MEDIA_URL }}logo2.png" alt="Logo" class="brand-logo">
+    </a>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+        <ul class="nav flex-column">
+
+            <!-- Dashboard -->
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                   href="{% url 'core:dashboard' %}">
+                    <i class="fa-solid fa-gauge-high nav-icon"></i>
+                    <span>{% trans "Tableau de Bord" %}</span>
+                </a>
+            </li>
+
+            <!-- ── COMMERCIAL ── -->
+            <li class="nav-section">{% trans "Commercial" %}</li>
+
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navCommercial" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-briefcase nav-icon"></i>
+                    <span>{% trans "Commercial" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navCommercial">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'client_create' or request.resolver_match.url_name == 'client_update' %}active{% endif %}" href="{% url 'commercial:client_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Clients" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'revuedemande_list' or request.resolver_match.url_name == 'revuedemande_create' or request.resolver_match.url_name == 'revuedemande_update' %}active{% endif %}" href="{% url 'commercial:revuedemande_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Revue de Demande" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'devis_list' or request.resolver_match.url_name == 'devis_detail' or request.resolver_match.url_name == 'devis_create' or request.resolver_match.url_name == 'devis_update' %}active{% endif %}" href="{% url 'commercial:devis_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Devis" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'dossier_list' or request.resolver_match.url_name == 'dossier_detail' or request.resolver_match.url_name == 'dossier_create' or request.resolver_match.url_name == 'dossier_update' %}active{% endif %}" href="{% url 'commercial:dossier_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Dossiers" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'convention_list' or request.resolver_match.url_name == 'convention_create' or request.resolver_match.url_name == 'convention_update' %}active{% endif %}" href="{% url 'commercial:convention_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Conventions" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'ao_list' or 'appels-offres' in request.path or 'cautions' in request.path or 'decomptes' in request.path %}active{% endif %}" href="{% url 'commercial:ao_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "AO / BC / Cautions" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'bl_list' or request.resolver_match.url_name == 'bl_detail' or request.resolver_match.url_name == 'bl_create' or request.resolver_match.url_name == 'bl_update' %}active{% endif %}" href="{% url 'commercial:bl_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Bons de Livraison" %}</a></li>
+                        <li><a class="nav-link {% if request.resolver_match.url_name == 'resultatbc_list' or request.resolver_match.url_name == 'resultatbc_create' %}active{% endif %}" href="{% url 'commercial:resultatbc_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Enquêtes Client" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── FINANCE ── -->
+            <li class="nav-section">{% trans "Finance" %}</li>
+
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navFinance" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-chart-line nav-icon"></i>
+                    <span>{% trans "Finance" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navFinance">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link {% if 'factures' in request.path and 'fournisseurs' not in request.path and 'receptions' not in request.path %}active{% endif %}" href="{% url 'finance:facture_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Factures" %}</a></li>
+                        <li><a class="nav-link {% if 'factures-receptions' in request.path %}active{% endif %}" href="{% url 'finance:facture_reception_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Factures Réceptions" %}</a></li>
+                        <li><a class="nav-link {% if 'encaissements' in request.path %}active{% endif %}" href="{% url 'finance:encaissement_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Encaissements" %}</a></li>
+                        <li><a class="nav-link {% if 'caisse' in request.path %}active{% endif %}" href="{% url 'finance:caisse_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Caisse" %}</a></li>
+                        <li><a class="nav-link {% if 'recouvrements' in request.path %}active{% endif %}" href="{% url 'finance:recouvrement_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Recouvrement" %}</a></li>
+                        <li><a class="nav-link {% if 'fournisseurs' in request.path and 'factures' not in request.path %}active{% endif %}" href="{% url 'finance:fournisseur_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Fournisseurs" %}</a></li>
+                        <li><a class="nav-link {% if 'factures-fournisseurs' in request.path %}active{% endif %}" href="{% url 'finance:facture_fournisseur_list' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Factures Fournisseurs" %}</a></li>
+                        <li><a class="nav-link {% if 'dashboard' in request.path and 'finance' in request.path %}active{% endif %}" href="{% url 'finance:dashboard' %}"><i class="fa-regular fa-circle-dot"></i> {% trans "Tableau de Bord / Comptabilité" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── TECHNIQUE ── -->
+            <li class="nav-section">{% trans "Laboratoire" %}</li>
+
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navTechnique" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-microscope nav-icon"></i>
+                    <span>{% trans "Technique" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navTechnique">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Réceptions" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Feuilles d'Essais" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Planning" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Suivi Balances" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Maintenance" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── MÉTROLOGIE ── -->
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navMetrologie" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-ruler-combined nav-icon"></i>
+                    <span>{% trans "Métrologie" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navMetrologie">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Inventaire" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Étalonnages" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Capabilité" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── QUALITÉ ── -->
+            <li class="nav-section">{% trans "Système" %}</li>
+
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navQualite" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-certificate nav-icon"></i>
+                    <span>{% trans "Qualité" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navQualite">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Documents" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Veille Normative" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Fiches de Progrès" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── RH ── -->
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navRH" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-users nav-icon"></i>
+                    <span>{% trans "Ressources Humaines" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navRH">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Personnel" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Congés" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Stagiaires" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Paie" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── ACHATS ── -->
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navAchats" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-cart-shopping nav-icon"></i>
+                    <span>{% trans "Achats" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navAchats">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "BCI" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "BC Externes" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Prestataires" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── GED ── -->
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navGED" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-folder-open nav-icon"></i>
+                    <span>{% trans "GED" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navGED">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Archives" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Droits d'Accès" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ── ADMIN ── -->
+            {% if user.est_admin or user.is_superuser %}
+            <li class="nav-section">{% trans "Administration" %}</li>
+
+            <li class="nav-item">
+                <a class="nav-link nav-link-collapsible collapsed" data-bs-toggle="collapse"
+                   href="#navAdmin" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-gears nav-icon"></i>
+                    <span>{% trans "Paramétrage" %}</span>
+                    <i class="fa-solid fa-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="collapse" id="navAdmin">
+                    <ul class="nav flex-column nav-sub">
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Utilisateurs" %}</a></li>
+                        <li><a class="nav-link" href="#"><i class="fa-regular fa-circle-dot"></i> {% trans "Numérotation" %}</a></li>
+                        <li><a class="nav-link" href="/admin/"><i class="fa-regular fa-circle-dot"></i> {% trans "Admin Django" %}</a></li>
+                    </ul>
+                </div>
+            </li>
+            {% endif %}
+
+        </ul>
+    </nav>
+
+    <!-- Pied de sidebar -->
+    <div class="sidebar-footer">
+        <small>v1.0.0 — Phase 1</small>
+    </div>
+</div>
+<!-- /SIDEBAR -->
+
+<!-- ============================================================
+     CONTENU PRINCIPAL
+     ============================================================ -->
+<div class="main-wrapper" id="mainWrapper">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <!-- Bouton toggle sidebar -->
+        <button class="btn btn-icon sidebar-toggle" id="sidebarToggle" title="{% trans 'Masquer/Afficher le menu' %}">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="topbar-breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'core:dashboard' %}">
+                        <i class="fa-solid fa-house-chimney"></i>
+                    </a>
+                </li>
+                {% block breadcrumb %}{% endblock %}
+            </ol>
+        </nav>
+
+        <!-- Actions droite -->
+        <div class="topbar-actions ms-auto d-flex align-items-center">
+
+            <!-- Horloge -->
+            <div class="topbar-clock d-none d-md-flex align-items-center me-3">
+                <i class="fa-regular fa-clock me-1"></i>
+                <span id="topbarClock"></span>
+            </div>
+
+            <!-- Notifications (placeholder) -->
+            <div class="dropdown me-2">
+                <button class="btn btn-icon position-relative" data-bs-toggle="dropdown"
+                        title="{% trans 'Notifications' %}">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        0
+                    </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">{% trans "Notifications" %}</h6></li>
+                    <li><p class="dropdown-item text-muted small">{% trans "Aucune notification" %}</p></li>
+                </ul>
+            </div>
+
+            <!-- Menu Utilisateur -->
+            <div class="dropdown">
+                <button class="btn btn-user dropdown-toggle" data-bs-toggle="dropdown" id="userDropdown">
+                    <div class="user-avatar">
+                        {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                    </div>
+                    <div class="user-info d-none d-md-block">
+                        <span class="user-name">{{ user.nom_complet }}</span>
+                        <span class="user-role">{{ user.fonction|default:"Utilisateur" }}</span>
+                    </div>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end user-menu">
+                    <li>
+                        <div class="dropdown-header-user">
+                            <div class="user-avatar-lg">
+                                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-semibold">{{ user.nom_complet }}</div>
+                                <small class="text-muted">{{ user.email }}</small>
+                            </div>
+                        </div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'core:profile' %}">
+                            <i class="fa-solid fa-user-pen me-2"></i>{% trans "Mon Profil" %}
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#" onclick="return false;">
+                            <i class="fa-solid fa-id-badge me-2"></i>{% trans "Espace Personnel" %}
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{% url 'auth:logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item text-danger">
+                                <i class="fa-solid fa-right-from-bracket me-2"></i>{% trans "Déconnexion" %}
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+    <!-- /TOPBAR -->
+
+    <!-- MESSAGES DJANGO -->
+    {% if messages %}
+    <div class="messages-container px-4 pt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm"
+             role="alert">
+            {% if message.tags == 'success' %}<i class="fa-solid fa-circle-check me-2"></i>
+            {% elif message.tags == 'error' or message.tags == 'danger' %}<i class="fa-solid fa-circle-xmark me-2"></i>
+            {% elif message.tags == 'warning' %}<i class="fa-solid fa-triangle-exclamation me-2"></i>
+            {% else %}<i class="fa-solid fa-circle-info me-2"></i>{% endif %}
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- CONTENU DE LA PAGE -->
+    <main class="content-area">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="main-footer">
+        <div class="d-flex justify-content-between align-items-center">
+            <span>
+                &copy; {% now "Y" %} <strong>{{ LABO_NOM }}</strong> —
+                Tous droits réservés.
+            </span>
+            <span class="text-muted small">
+                LABO.COS App v1.0 | Phase 1
+            </span>
+        </div>
+    </footer>
+
+</div><!-- /main-wrapper -->
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<!-- jQuery 3.7 -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- Bootstrap 5.3 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.print.min.js"></script>
+
+<!-- LABO.COS JS -->
+<script src="{% static 'js/labocos.js' %}"></script>
+
+<!-- HTMX -->
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script>
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+    });
+
+    // Global validation error auto-scroll and notification
+    document.addEventListener("DOMContentLoaded", function() {
+        // Only target actual validation error classes (.is-invalid or .has-error)
+        const firstInvalid = document.querySelector('.is-invalid, .has-error');
+        if (firstInvalid) {
+            // Smoothly scroll to the first invalid element
+            setTimeout(() => {
+                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const input = firstInvalid.closest('.form-group, td, div')?.querySelector('input, select, textarea');
+                if (input) {
+                    input.focus();
+                }
+            }, 300);
+
+            // Collect all specific errors
+            const invalidFields = document.querySelectorAll('.is-invalid');
+            let errorItems = '';
+            
+            invalidFields.forEach(field => {
+                let labelText = '';
+                // Try to find label by 'for' attribute
+                if (field.id) {
+                    const label = document.querySelector(`label[for="${field.id}"]`);
+                    if (label) {
+                        labelText = label.textContent.replace('*', '').trim();
+                    }
+                }
+                // Fallback to closest label
+                if (!labelText) {
+                    const group = field.closest('.form-group, td, div');
+                    const label = group ? group.querySelector('label') : null;
+                    if (label) {
+                        labelText = label.textContent.replace('*', '').trim();
+                    }
+                }
+                // Fallback to table row question (for custom checklist table)
+                if (!labelText) {
+                    const row = field.closest('tr');
+                    if (row && row.cells.length > 1) {
+                        labelText = row.cells[1].textContent.trim();
+                    }
+                }
+
+                // Get error message
+                let errorMsg = 'Ce champ contient une erreur.';
+                const feedback = field.closest('.form-group, td, div')?.querySelector('.invalid-feedback');
+                if (feedback) {
+                    errorMsg = feedback.textContent.trim();
+                }
+
+                if (labelText) {
+                    // Truncate very long labels (like full questions)
+                    const displayLabel = labelText.length > 60 ? labelText.substring(0, 60) + '...' : labelText;
+                    errorItems += `<li><strong>${displayLabel}</strong> : ${errorMsg}</li>`;
+                } else {
+                    errorItems += `<li>${errorMsg}</li>`;
+                }
+            });
+
+            // Show a floating alert notification
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 shadow-lg';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.style.minWidth = '400px';
+            alertDiv.style.maxWidth = '600px';
+            
+            let alertContent = `
+                <div class="d-flex align-items-start">
+                    <i class="fa-solid fa-circle-exclamation fs-4 me-3 mt-1"></i>
+                    <div>
+                        <strong class="fs-6">Le formulaire contient des erreurs :</strong>
+            `;
+            
+            if (errorItems) {
+                alertContent += `<ul class="mb-0 mt-2 ps-3 small">${errorItems}</ul>`;
+            } else {
+                alertContent += `<p class="mb-0 mt-1 small">Veuillez corriger les champs en rouge.</p>`;
+            }
+            
+            alertContent += `
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            alertDiv.innerHTML = alertContent;
+            document.body.appendChild(alertDiv);
+
+            // Auto close after 8 seconds (longer since there is text to read)
+            setTimeout(() => {
+                if (document.body.contains(alertDiv)) {
+                    const bsAlert = new bootstrap.Alert(alertDiv);
+                    bsAlert.close();
+                }
+            }, 8000);
+        }
+    });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

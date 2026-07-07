@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Supprimer Dossier" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'commercial:dossier_list' %}">{% trans "Dossiers" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Supprimer" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-trash text-danger me-2"></i>
+        {% trans "Supprimer le Dossier" %}
+    </h1>
+    <p class="page-subtitle">{% trans "Confirmation de suppression" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4 text-center">
+        <i class="fa-solid fa-triangle-exclamation text-warning fa-3x mb-3"></i>
+        <h4 class="fw-bold text-dark">{% trans "Êtes-vous sûr de vouloir supprimer ce dossier ?" %}</h4>
+        <p class="text-muted mb-4">
+            {% blocktrans with ref=object.reference %}Vous êtes sur le point de supprimer définitivement le dossier <strong>{{ ref }}</strong>. Cette action est irréversible.{% endblocktrans %}
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="d-flex justify-content-center gap-2">
+                <button type="submit" class="btn btn-danger px-4">
+                    <i class="fa-solid fa-trash me-1"></i>
+                    {% trans "Confirmer la suppression" %}
+                </button>
+                <a href="{% url 'commercial:dossier_list' %}" class="btn btn-outline-secondary px-4">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

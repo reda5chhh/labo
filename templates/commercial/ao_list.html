@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load i18n humanize %}
+
+{% block title %}{% trans "Marchés Publics & Appels d'Offres" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Appels d'Offres & Cautions" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-gavel text-primary me-2"></i>
+        {% trans "Marchés Publics, Cautions & Décomptes" %}
+    </h1>
+    <p class="page-subtitle">{% trans "Gestion des soumissions, adjudications, cautions bancaires et décomptes de travaux" %}</p>
+</div>
+
+<!-- Navigation par Onglets -->
+<ul class="nav nav-tabs mb-4" id="aoTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="soumissions-tab" data-bs-toggle="tab" data-bs-target="#soumissions" type="button" role="tab" aria-controls="soumissions" aria-selected="true">
+            <i class="fa-solid fa-file-signature me-1"></i> {% trans "AO Soumissions" %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="adjudications-tab" data-bs-toggle="tab" data-bs-target="#adjudications" type="button" role="tab" aria-controls="adjudications" aria-selected="false">
+            <i class="fa-solid fa-award me-1"></i> {% trans "Marchés Adjugés" %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="cautions-tab" data-bs-toggle="tab" data-bs-target="#cautions" type="button" role="tab" aria-controls="cautions" aria-selected="false">
+            <i class="fa-solid fa-shield-halved me-1"></i> {% trans "Cautions Bancaires" %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="decomptes-tab" data-bs-toggle="tab" data-bs-target="#decomptes" type="button" role="tab" aria-controls="decomptes" aria-selected="false">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i> {% trans "Décomptes / Situations" %}
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="aoTabsContent">
+    <!-- ── TAB 1: SOUMISSIONS ── -->
+    <div class="tab-pane fade show active" id="soumissions" role="tabpanel" aria-labelledby="soumissions-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Appels d'Offres en Phase Soumission" %}</h5>
+                <a href="{% url 'commercial:aosoumission_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Nouvelle Soumission" %}
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Référence AO" %}</th>
+                                <th>{% trans "Client" %}</th>
+                                <th>{% trans "Objet" %}</th>
+                                <th>{% trans "Date Limite" %}</th>
+                                <th class="text-end">{% trans "Montant Soumis" %}</th>
+                                <th>{% trans "Statut" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ao in soumissions %}
+                            <tr>
+                                <td class="fw-bold">{{ ao.reference_ao }}</td>
+                                <td class="fw-semibold text-dark">{{ ao.client.nom }}</td>
+                                <td>{{ ao.objet|truncatechars:35 }}</td>
+                                <td>{{ ao.date_limite|date:"d/m/Y H:i" }}</td>
+                                <td class="text-end fw-semibold">{{ ao.montant_soumission|intcomma }} MAD</td>
+                                <td>
+                                    {% if ao.statut == 'ADJUGE' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        {{ ao.get_statut_display }}
+                                    </span>
+                                    {% elif ao.statut == 'REJETE' %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                        {{ ao.get_statut_display }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                        {{ ao.get_statut_display }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'commercial:aosoumission_update' ao.pk %}" class="btn btn-sm btn-icon">
+                                        <i class="fa-solid fa-pencil text-primary"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TAB 2: ADJUDICATIONS ── -->
+    <div class="tab-pane fade" id="adjudications" role="tabpanel" aria-labelledby="adjudications-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Marchés Remportés & en Cours d'Exécution" %}</h5>
+                <a href="{% url 'commercial:aoadjuge_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Enregistrer Marché Adjugé" %}
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Référence AO" %}</th>
+                                <th>{% trans "Client" %}</th>
+                                <th>{% trans "Date d'Adjudication" %}</th>
+                                <th class="text-end">{% trans "Montant Final (TTC)" %}</th>
+                                <th class="text-center">{% trans "Caution Définitive" %}</th>
+                                <th>{% trans "Statut d'Exécution" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for market in adjudications %}
+                            <tr>
+                                <td class="fw-bold">{{ market.ao_soumission.reference_ao }}</td>
+                                <td class="fw-semibold text-dark">{{ market.ao_soumission.client.nom }}</td>
+                                <td>{{ market.date_adjudication|date:"d/m/Y" }}</td>
+                                <td class="text-end fw-bold text-primary">{{ market.montant_final|intcomma }} MAD</td>
+                                <td class="text-center">
+                                    {% if market.caution_definitive_deposee %}
+                                    <span class="badge bg-success-subtle text-success">{% trans "Déposée" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">{% trans "Non Déposée" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if market.statut == 'TERMINE' %}
+                                    <span class="badge bg-success">{{ market.get_statut_display }}</span>
+                                    {% elif market.statut == 'RESILIE' %}
+                                    <span class="badge bg-danger">{{ market.get_statut_display }}</span>
+                                    {% else %}
+                                    <span class="badge bg-info text-white">{{ market.get_statut_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'commercial:aoadjuge_update' market.pk %}" class="btn btn-sm btn-icon">
+                                        <i class="fa-solid fa-pencil text-primary"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TAB 3: CAUTIONS ── -->
+    <div class="tab-pane fade" id="cautions" role="tabpanel" aria-labelledby="cautions-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Registre des Cautions Bancaires émise" %}</h5>
+                <a href="{% url 'commercial:caution_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Déposer une Caution" %}
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Banque" %}</th>
+                                <th>{% trans "Type" %}</th>
+                                <th>{% trans "Marché / AO" %}</th>
+                                <th class="text-end">{% trans "Montant" %}</th>
+                                <th>{% trans "Date Dépôt" %}</th>
+                                <th>{% trans "Date Mainlevée" %}</th>
+                                <th>{% trans "Statut" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for caution in cautions %}
+                            <tr>
+                                <td class="fw-semibold text-dark">{{ caution.banque }}</td>
+                                <td>{{ caution.get_type_caution_display }}</td>
+                                <td>
+                                    {% if caution.ao_soumission %}
+                                    <code class="text-muted">{{ caution.ao_soumission.reference_ao }}</code>
+                                    {% elif caution.ao_adjuge %}
+                                    <code class="text-muted">{{ caution.ao_adjuge.ao_soumission.reference_ao }}</code>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-bold">{{ caution.montant|intcomma }} MAD</td>
+                                <td>{{ caution.date_depot|date:"d/m/Y" }}</td>
+                                <td>{{ caution.date_mainlevee|date:"d/m/Y"|default:"-" }}</td>
+                                <td>
+                                    {% if caution.statut == 'LIBERE' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        {{ caution.get_statut_display }}
+                                    </span>
+                                    {% elif caution.statut == 'CONFISQUE' %}
+                                    <span class="badge bg-danger text-white">
+                                        {{ caution.get_statut_display }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                        {{ caution.get_statut_display }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'commercial:caution_update' caution.pk %}" class="btn btn-sm btn-icon">
+                                        <i class="fa-solid fa-pencil text-primary"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TAB 4: DÉCOMPTES ── -->
+    <div class="tab-pane fade" id="decomptes" role="tabpanel" aria-labelledby="decomptes-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Situations de Travaux & Décomptes" %}</h5>
+                <a href="{% url 'commercial:decompte_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Créer un Décompte" %}
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Référence" %}</th>
+                                <th>{% trans "Dossier" %}</th>
+                                <th>{% trans "Décompte N°" %}</th>
+                                <th>{% trans "Date" %}</th>
+                                <th class="text-end">{% trans "Montant H.T." %}</th>
+                                <th class="text-end">{% trans "Montant T.T.C." %}</th>
+                                <th>{% trans "Statut" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dec in decomptes %}
+                            <tr>
+                                <td class="fw-bold">{{ dec.reference }}</td>
+                                <td>{{ dec.dossier.reference }}</td>
+                                <td class="text-center fw-bold">{{ dec.numero_decompte }}</td>
+                                <td>{{ dec.date_decompte|date:"d/m/Y" }}</td>
+                                <td class="text-end fw-semibold">{{ dec.montant_ht|intcomma }} MAD</td>
+                                <td class="text-end fw-bold text-primary">{{ dec.montant_ttc|intcomma }} MAD</td>
+                                <td>
+                                    {% if dec.statut == 'PAYE' %}
+                                    <span class="badge bg-success">{{ dec.get_statut_display }}</span>
+                                    {% elif dec.statut == 'VALIDE' %}
+                                    <span class="badge bg-info text-white">{{ dec.get_statut_display }}</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">{{ dec.get_statut_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'commercial:decompte_update' dec.pk %}" class="btn btn-sm btn-icon">
+                                        <i class="fa-solid fa-pencil text-primary"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('.datatable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 10,
+            order: [[0, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

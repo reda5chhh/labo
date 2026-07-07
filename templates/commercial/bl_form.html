@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}
+    {% if object %}{% trans "Modifier BL" %}{% else %}{% trans "Nouveau BL" %}{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'commercial:bl_list' %}">{% trans "Bons de Livraison" %}</a></li>
+<li class="breadcrumb-item active">{% if object %}{% trans "Modification" %}{% else %}{% trans "Nouveau" %}{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-truck text-primary me-2"></i>
+        {% if object %}{% trans "Modifier le Bon de Livraison :" %} {{ object.reference }}{% else %}{% trans "Créer un Bon de Livraison" %}{% endif %}
+    </h1>
+    <p class="page-subtitle">{% trans "Renseignez les métadonnées et le détail des documents livrés" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            
+            <!-- Informations principales du BL -->
+            <div class="row">
+                <div class="col-12">
+                    <h5 class="fw-bold mb-3 text-dark">
+                        <i class="fa-solid fa-circle-info text-primary me-2"></i>
+                        {% trans "Métadonnées de Livraison" %}
+                    </h5>
+                    {% crispy form %}
+                </div>
+            </div>
+
+            <!-- Lignes de détail du BL -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5 class="fw-bold mb-3 text-dark">
+                        <i class="fa-solid fa-list-ol text-primary me-2"></i>
+                        {% trans "Détails des Rapports / Livrables" %}
+                    </h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle" id="formsetTable">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>{% trans "Désignation / Livrable" %}</th>
+                                    <th style="width: 150px;">{% trans "Quantité" %}</th>
+                                    <th>{% trans "Observations" %}</th>
+                                    <th style="width: 80px;" class="text-center">{% trans "Supprimer" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ formset.management_form }}
+                                {% for formset_form in formset %}
+                                <tr>
+                                    <!-- Champs masqués d'ID -->
+                                    {% for hidden in formset_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    <td>
+                                        {{ formset_form.designation|as_crispy_field }}
+                                    </td>
+                                    <td>
+                                        {{ formset_form.quantite|as_crispy_field }}
+                                    </td>
+                                    <td>
+                                        {{ formset_form.observations|as_crispy_field }}
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        {% if formset.can_delete %}
+                                            <div class="formcheck-delete">
+                                                {{ formset_form.DELETE }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation -->
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer" %}
+                </button>
+                <a href="{% url 'commercial:bl_list' %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hides the default crispy label inside the table rows for cleaner layout */
+    #formsetTable label {
+        display: none !important;
+    }
+    #formsetTable .mb-3 {
+        margin-bottom: 0 !important;
+    }
+    .formcheck-delete input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--labo-danger);
+    }
+</style>
+{% endblock %}

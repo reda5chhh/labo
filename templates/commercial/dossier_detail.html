@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Détails Dossier" %} | {{ dossier.reference }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'commercial:dossier_list' %}">{% trans "Dossiers" %}</a></li>
+<li class="breadcrumb-item active">{{ dossier.reference }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="page-title">
+            <i class="fa-solid fa-folder-open text-primary me-2"></i>
+            {% trans "Dossier Projet" %} {{ dossier.reference }}
+        </h1>
+        <p class="page-subtitle">{% trans "Fiche opérationnelle et administrative du chantier" %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'commercial:dossier_update' dossier.pk %}" class="btn btn-primary">
+            <i class="fa-solid fa-pencil me-1"></i> {% trans "Modifier" %}
+        </a>
+        <a href="{% url 'commercial:dossier_list' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i> {% trans "Retour à la liste" %}
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Fiche descriptive -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-bottom py-3">
+                <h5 class="card-title fw-bold mb-0 text-dark">
+                    <i class="fa-solid fa-file-contract text-primary me-2"></i>
+                    {% trans "Données Opérationnelles" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">{% trans "Client / Maître d'Ouvrage" %}</label>
+                        <span class="fw-bold text-dark fs-6">{{ dossier.client.nom }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">{% trans "Chef de Projet / Responsable" %}</label>
+                        <span class="fw-semibold text-dark">{{ dossier.chef_projet.nom_complet|default:"-" }}</span>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small d-block">{% trans "Nom du Projet / Affaire" %}</label>
+                        <span class="text-dark fw-medium">{{ dossier.nom_projet }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">{% trans "Lieu d'Exécution / Chantier" %}</label>
+                        <span class="text-dark">{{ dossier.emplacement|default:"-" }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">{% trans "Devis d'Origine" %}</label>
+                        {% if dossier.devis %}
+                        <a href="{% url 'commercial:devis_detail' dossier.devis.pk %}" class="text-primary fw-medium">
+                            <i class="fa-solid fa-file-invoice"></i> {{ dossier.devis.reference }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">{% trans "Aucun devis lié" %}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">{% trans "Date d'Ouverture" %}</label>
+                        <span class="text-dark">{{ dossier.date_ouverture|date:"d F Y" }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">{% trans "Date de Clôture" %}</label>
+                        <span class="text-dark">{{ dossier.date_cloture|date:"d F Y"|default:"-" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statut latéral -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 text-center">
+            <div class="card-body p-4">
+                <span class="text-muted text-uppercase small fw-bold">{% trans "Statut du Dossier" %}</span>
+                <div class="my-3">
+                    {% if dossier.statut == 'CLOTURE' %}
+                    <span class="badge bg-success px-4 py-2 fs-6">
+                        <i class="fa-solid fa-circle-check me-1"></i> {{ dossier.get_statut_display }}
+                    </span>
+                    {% elif dossier.statut == 'ANNULE' %}
+                    <span class="badge bg-danger px-4 py-2 fs-6">
+                        <i class="fa-solid fa-ban me-1"></i> {{ dossier.get_statut_display }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-info px-4 py-2 fs-6">
+                        <i class="fa-solid fa-spinner fa-spin me-1"></i> {{ dossier.get_statut_display }}
+                    </span>
+                    {% endif %}
+                </div>
+                <hr>
+                <div class="text-start">
+                    <p class="text-muted small mb-2">
+                        <i class="fa-regular fa-clock me-1"></i>
+                        {% trans "Créé le :" %} <strong>{{ dossier.created_at|date:"d/m/Y H:i" }}</strong>
+                    </p>
+                    <p class="text-muted small mb-0">
+                        <i class="fa-regular fa-user me-1"></i>
+                        {% trans "Par :" %} <strong>{{ dossier.created_by|default:"-" }}</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

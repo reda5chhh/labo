@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Facturation par Réception" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-receipt text-primary me-2"></i>
+                {% trans "Facturation par Réception d'Essais" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Sélectionnez et facturez en masse les réceptions de laboratoire dont les rapports sont validés" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'finance:facture_list' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>
+                {% trans "Retour aux Factures" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Zone de Filtrage et Recherche (Moteur de Recherche) -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" id="filterForm" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">{% trans "Nature Échantillon" %}</label>
+                <select name="nature" class="form-select form-select-sm" id="filterNature">
+                    <option value="">{% trans "Toutes les natures" %}</option>
+                    <option value="Béton">{% trans "Béton" %}</option>
+                    <option value="Sol">{% trans "Sol" %}</option>
+                    <option value="Eau">{% trans "Eau" %}</option>
+                    <option value="Enrobé">{% trans "Enrobé" %}</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">{% trans "État Rapport" %}</label>
+                <select name="etat_rapport" class="form-select form-select-sm" id="filterRapport">
+                    <option value="">{% trans "Tous les états" %}</option>
+                    <option value="VALIDE">{% trans "Validé uniquement" %}</option>
+                    <option value="BROUILLON">{% trans "Brouillon uniquement" %}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">{% trans "Recherche textuelle (Client, Dossier, N°)" %}</label>
+                <input type="text" id="filterSearch" class="form-control form-control-sm" placeholder="{% trans 'Rechercher...' %}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" id="resetFilters" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="fa-solid fa-rotate-left me-1"></i>{% trans "Réinitialiser" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Formulaire de Facturation Groupée -->
+<form method="post" action="{% url 'finance:facture_grouped_create' %}" id="billingForm">
+    {% csrf_token %}
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0 text-dark fw-bold">
+                <i class="fa-solid fa-table text-muted me-2"></i>{% trans "Réceptions prêtes à être facturées" %}
+            </h5>
+            <button type="submit" class="btn btn-success btn-sm shadow-sm" id="submitBillingBtn" disabled>
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i>
+                {% trans "Facturer les réceptions sélectionnées" %}
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle w-100" id="receptionsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; orderable: false;">
+                                <input type="checkbox" class="form-check-input" id="checkAll">
+                            </th>
+                            <th>{% trans "Date Réception" %}</th>
+                            <th>{% trans "N° Réception" %}</th>
+                            <th>{% trans "Client" %}</th>
+                            <th>{% trans "Dossier" %}</th>
+                            <th>{% trans "Nature Échantillon" %}</th>
+                            <th>{% trans "État Essai" %}</th>
+                            <th>{% trans "État Rapport" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in receptions %}
+                        <tr class="reception-row" 
+                            data-nature="{{ r.nature_echantillon }}"
+                            data-rapport="{{ r.etat_rapport }}">
+                            <td>
+                                <input type="checkbox" name="receptions" value="{{ r.id }}" class="form-check-input reception-checkbox">
+                            </td>
+                            <td>{{ r.date_reception|date:"d/m/Y" }}</td>
+                            <td class="fw-bold">{{ r.num_reception }}</td>
+                            <td class="fw-semibold text-dark">{{ r.client.nom }}</td>
+                            <td>{{ r.dossier.reference|default:"—" }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    {{ r.nature_echantillon }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if r.etat_essai == 'TERMINE' %}
+                                <span class="badge-status badge-status-success">{{ r.get_etat_essai_display }}</span>
+                                {% elif r.etat_essai == 'EN_COURS' %}
+                                <span class="badge-status badge-status-warning">{{ r.get_etat_essai_display }}</span>
+                                {% else %}
+                                <span class="badge-status badge-status-neutral">{{ r.get_etat_essai_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.etat_rapport == 'VALIDE' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                    <i class="fa-solid fa-circle-check me-1"></i>{{ r.get_etat_rapport_display }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                                    <i class="fa-solid fa-spinner fa-spin me-1"></i>{{ r.get_etat_rapport_display }}
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialiser DataTables
+        const table = $('#receptionsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[1, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 0 }
+            ],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        // Gérer la case de sélection globale
+        $('#checkAll').on('change', function() {
+            const checked = this.checked;
+            $('.reception-checkbox').prop('checked', checked).trigger('change');
+        });
+
+        // Activer/Désactiver le bouton de facturation groupée
+        $('#receptionsTable tbody').on('change', '.reception-checkbox', function() {
+            const anyChecked = $('.reception-checkbox:checked').length > 0;
+            $('#submitBillingBtn').prop('disabled', !anyChecked);
+        });
+
+        // Filtrage dynamique personnalisé (Nature et État Rapport)
+        $('#filterNature, #filterRapport').on('change', function() {
+            const nature = $('#filterNature').val();
+            const rapport = $('#filterRapport').val();
+            
+            table.columns(5).search(nature);
+            table.columns(7).search(rapport);
+            table.draw();
+        });
+
+        // Filtrage textuel global personnalisé
+        $('#filterSearch').on('keyup', function() {
+            table.search(this.value).draw();
+        });
+
+        // Réinitialiser les filtres
+        $('#resetFilters').on('click', function() {
+            $('#filterNature').val('');
+            $('#filterRapport').val('');
+            $('#filterSearch').val('');
+            table.search('').columns().search('').draw();
+        });
+    });
+</script>
+{% endblock %}

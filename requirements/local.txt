@@ -1,0 +1,18 @@
+# ============================================================
+# LABO.COS App — Dépendances de développement (local.txt)
+# ============================================================
+-r base.txt
+
+# Debug
+django-debug-toolbar==4.4.6
+
+# Tests
+factory-boy==3.3.1
+Faker==30.0.0
+coverage==7.6.1
+pytest-django==4.9.0
+pytest==8.3.3
+
+# Linting & Formatage
+ruff==0.6.9
+black==24.8.0

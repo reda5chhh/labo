@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Suivi du Recouvrement" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Recouvrement" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-shield-halved text-primary me-2"></i>
+                {% trans "Suivi du Recouvrement" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Relances clients, gestion des factures en souffrance et balance âgée" %}</p>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">
+            <i class="fa-solid fa-clock-rotate-left text-muted me-2"></i>{% trans "Dossiers de recouvrement en cours" %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="recouvrementTable">
+                <thead>
+                    <tr>
+                        <th>{% trans "N° Facture" %}</th>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Échéance" %}</th>
+                        <th>{% trans "Jours de Retard" %}</th>
+                        <th>{% trans "Solde Dû" %}</th>
+                        <th>{% trans "Nombre Relances" %}</th>
+                        <th>{% trans "Dernière Relance" %}</th>
+                        <th>{% trans "Statut Suivi" %}</th>
+                        <th class="text-end" style="width: 100px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in recouvrements %}
+                    <tr>
+                        <td class="fw-bold">
+                            <a href="{% url 'finance:facture_detail' rec.facture.id %}" class="text-primary">
+                                {{ rec.facture.reference }}
+                            </a>
+                        </td>
+                        <td class="fw-semibold text-dark">{{ rec.facture.client.nom }}</td>
+                        <td>{{ rec.facture.date_echeance|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if rec.facture.nombre_jours_retard > 30 %}
+                            <span class="badge bg-danger">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>{{ rec.facture.nombre_jours_retard }} j
+                            </span>
+                            {% elif rec.facture.nombre_jours_retard > 15 %}
+                            <span class="badge bg-warning text-dark">
+                                {{ rec.facture.nombre_jours_retard }} j
+                            </span>
+                            {% else %}
+                            <span class="badge bg-light text-dark border">
+                                {{ rec.facture.nombre_jours_retard }} j
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-danger">{{ rec.facture.solde }} DH</td>
+                        <td>
+                            <span class="badge bg-light text-secondary border px-2 py-1">
+                                {{ rec.nombre_rappels }}
+                            </span>
+                        </td>
+                        <td>{{ rec.dernier_rappel|date:"d/m/Y"|default:"—" }}</td>
+                        <td>
+                            {% if rec.statut_recouvrement == 'A_RAPPELER' %}
+                            <span class="badge bg-info text-dark">{% trans "À rappeler" %}</span>
+                            {% elif rec.statut_recouvrement == 'RELANCE_1' %}
+                            <span class="badge bg-warning text-dark">{% trans "Relance 1" %}</span>
+                            {% elif rec.statut_recouvrement == 'RELANCE_2' %}
+                            <span class="badge bg-danger">{% trans "Relance 2" %}</span>
+                            {% elif rec.statut_recouvrement == 'CONTENTIEUX' %}
+                            <span class="badge bg-dark">{% trans "Contentieux" %}</span>
+                            {% else %}
+                            <span class="badge bg-success">{% trans "Résolu" %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'finance:recouvrement_update' rec.pk %}" class="btn btn-sm btn-outline-primary" title="{% trans 'Mettre à jour le suivi' %}">
+                                <i class="fa-solid fa-pen-to-square me-1"></i>{% trans "Relancer" %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#recouvrementTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[3, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 8 }
+            ],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

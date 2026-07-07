@@ -1,0 +1,304 @@
+{% load static %}
+{% load i18n humanize %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Devis / Offre de prix - {{ devis.reference }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #000;
+            background-color: #fff;
+            margin: 0;
+            padding: 15mm 12mm;
+            line-height: 1.35;
+            box-sizing: border-box;
+        }
+        .print-container {
+            width: 100%;
+            max-width: 190mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            border: 1.5px solid #000;
+        }
+        .header-table td {
+            border: 1.5px solid #000;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .logo-cell {
+            width: 24%;
+            text-align: center;
+            padding: 6px !important;
+        }
+        .logo-cell img {
+            max-height: 58px;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+        .title-cell {
+            width: 52%;
+            text-align: center;
+            font-size: 14.5px;
+            font-weight: bold;
+            padding: 8px !important;
+            line-height: 1.35;
+        }
+        .meta-cell {
+            width: 24%;
+        }
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        .meta-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            border-left: 1px solid #000;
+            font-size: 9.5px;
+            padding: 3.5px 6px;
+        }
+        .meta-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .box-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 7px;
+            align-items: stretch;
+        }
+        .box-label {
+            width: 150px;
+            min-width: 150px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        .box-value {
+            flex-grow: 1;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            word-break: break-word;
+        }
+
+        .section-title {
+            text-align: left;
+            font-weight: bold;
+            text-decoration: underline;
+            margin: 18px 0 8px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10.5px;
+        }
+        .details-table th, .details-table td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: left;
+        }
+        .details-table th {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            text-align: center;
+        }
+        .text-right {
+            text-align: right !important;
+        }
+        .text-center {
+            text-align: center !important;
+        }
+        .fw-bold {
+            font-weight: bold;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+        
+        .no-print-bar {
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .btn-print {
+            background-color: #2b4c7e;
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-print:hover {
+            background-color: #1a3052;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Bar (hidden when printing) -->
+    <div class="no-print no-print-bar">
+        <div>
+            <span style="font-weight: bold; font-size: 14px; color: #334155;">Aperçu avant impression (Devis)</span>
+        </div>
+        <div>
+            <button onclick="window.print();" class="btn-print">
+                Imprimer le devis
+            </button>
+            <a href="{% url 'commercial:devis_list' %}" class="btn-print" style="background-color: #64748b; text-decoration: none;">
+                Fermer
+            </a>
+        </div>
+    </div>
+
+    <!-- DOCUMENT CONTAINER -->
+    <div class="print-container">
+        
+        <!-- HEADER -->
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <img src="/media/logo.png" alt="LABO-COS">
+                </td>
+                <td class="title-cell">
+                    DEVIS / OFFRE COMMERCIALE
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-table">
+                        <tr>
+                            <td style="width: 45%; font-weight: bold;">Réf. Devis</td>
+                            <td>{{ devis.reference|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">Date</td>
+                            <td>{{ devis.date_devis|date:"d/m/Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">Validité</td>
+                            <td>{{ devis.validite_jours }} jours</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- ADMINISTRATIVE INFO -->
+        <div class="box-row">
+            <div class="box-label">Client</div>
+            <div class="box-value fw-bold">{{ devis.client.nom }}</div>
+        </div>
+        <div class="box-row">
+            <div class="box-label">Objet du devis</div>
+            <div class="box-value">{{ devis.objet }}</div>
+        </div>
+
+        <div class="section-title">Détails de la prestation</div>
+        
+        <table class="details-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">N° Prix</th>
+                    <th style="width: 45%;">Désignation</th>
+                    <th style="width: 10%;">Unité</th>
+                    <th style="width: 10%;">Quantité</th>
+                    <th style="width: 12%;">P.U HT (MAD)</th>
+                    <th style="width: 13%;">Total HT (MAD)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detail in devis.details.all %}
+                <tr>
+                    <td class="text-center">{{ detail.num_prix|default:"-" }}</td>
+                    <td>{{ detail.designation }}</td>
+                    <td class="text-center">{{ detail.unite|default:"-" }}</td>
+                    <td class="text-center">{{ detail.quantite }}</td>
+                    <td class="text-right">{{ detail.prix_unitaire|intcomma }}</td>
+                    <td class="text-right">{{ detail.prix_total|intcomma }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">Aucun détail enregistré pour ce devis.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
+            <table class="details-table" style="width: 40%; margin-top: 0;">
+                <tr>
+                    <th class="text-right" style="width: 60%;">Total H.T :</th>
+                    <td class="text-right fw-bold">{{ devis.montant_ht|intcomma }} MAD</td>
+                </tr>
+                <tr>
+                    <th class="text-right">T.V.A ({{ devis.taux_tva|floatformat:0 }}%) :</th>
+                    <td class="text-right">{{ devis.montant_tva|intcomma }} MAD</td>
+                </tr>
+                <tr>
+                    <th class="text-right" style="font-size: 12px; background-color: #e2e8f0;">Total T.T.C :</th>
+                    <td class="text-right fw-bold" style="font-size: 12px; background-color: #e2e8f0;">{{ devis.montant_ttc|intcomma }} MAD</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section-title" style="margin-top: 25px;">Conditions de règlement & Note</div>
+        <div class="box-row" style="margin-top: 8px;">
+            <div class="box-value" style="min-height: 50px; font-style: italic;">{{ devis.conditions_reglement|default:"Aucune condition de règlement spécifiée."|linebreaksbr }}</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px;">
+            <div class="text-center">
+                <strong>Visa du Service Commercial</strong>
+            </div>
+            <div class="text-center">
+                <strong>Bon pour accord (Signature Client)</strong>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        }
+    </script>
+</body>
+</html>

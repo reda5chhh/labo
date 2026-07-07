@@ -1,0 +1,425 @@
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Fiche de Revue des Demandes et des Appels d'Offres - {{ revue.reference|default:revue.pk }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0; /* Hides browser default header (date/title) and footer (URL) */
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #000;
+            background-color: #fff;
+            margin: 0;
+            padding: 15mm 12mm; /* Simulates page margins */
+            line-height: 1.35;
+            box-sizing: border-box;
+        }
+        .print-container {
+            width: 100%;
+            max-width: 190mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        
+        /* Header table */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            border: 1.5px solid #000;
+        }
+        .header-table td {
+            border: 1.5px solid #000;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .logo-cell {
+            width: 24%;
+            text-align: center;
+            padding: 6px !important;
+        }
+        .logo-cell img {
+            max-height: 58px;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+        .title-cell {
+            width: 52%;
+            text-align: center;
+            font-size: 14.5px;
+            font-weight: bold;
+            padding: 8px !important;
+            line-height: 1.35;
+        }
+        .meta-cell {
+            width: 24%;
+        }
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        .meta-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            border-left: 1px solid #000;
+            font-size: 9.5px;
+            padding: 3.5px 6px;
+        }
+        .meta-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Rounded border boxes */
+        .box-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 7px;
+            align-items: stretch;
+        }
+        .box-label {
+            width: 210px;
+            min-width: 210px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        .box-value {
+            flex-grow: 1;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            word-break: break-word;
+        }
+        .box-col {
+            display: flex;
+            width: 50%;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        /* Section divider */
+        .section-title {
+            text-align: center;
+            font-weight: bold;
+            text-decoration: underline;
+            margin: 14px 0 8px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Checklist rows */
+        .checklist-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            align-items: stretch;
+        }
+        .chk-text {
+            flex-grow: 1;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 4.5px 10px;
+            display: flex;
+            align-items: center;
+            font-size: 10.5px;
+        }
+        .chk-val {
+            width: 65px;
+            min-width: 65px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 4.5px 6px;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10.5px;
+        }
+        .chk-note {
+            width: 260px;
+            min-width: 260px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 4.5px 10px;
+            display: flex;
+            align-items: center;
+            font-size: 10.5px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+        .fw-bold {
+            font-weight: bold;
+        }
+
+        /* Print trigger */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+        
+        .no-print-bar {
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .btn-print {
+            background-color: #2b4c7e;
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-print:hover {
+            background-color: #1a3052;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Bar (hidden when printing) -->
+    <div class="no-print no-print-bar">
+        <div>
+            <span style="font-weight: bold; font-size: 14px; color: #334155;">Aperçu avant impression</span>
+        </div>
+        <div>
+            <button onclick="window.print();" class="btn-print">
+                Imprimer le document
+            </button>
+            <button onclick="window.close();" class="btn-print" style="background-color: #64748b;">
+                Fermer
+            </button>
+        </div>
+    </div>
+
+    <!-- DOCUMENT CONTAINER -->
+    <div class="print-container">
+        
+        <!-- HEADER -->
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <img src="/media/logo.png" alt="LABO-COS">
+                </td>
+                <td class="title-cell">
+                    FICHE DE REVUE DES DEMANDES ET DES APPELS D'OFFRE
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-table">
+                        <tr>
+                            <td style="width: 55%; font-weight: bold;">Référence</td>
+                            <td>PM04-01</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">Version</td>
+                            <td>V06</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">Date d'application</td>
+                            <td>03/03/2025</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">Page</td>
+                            <td style="text-align: right;">1/1</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- ADMINISTRATIVE INFO -->
+        <div class="box-row">
+            <div class="box-label">Client</div>
+            <div class="box-value fw-bold">{{ revue.client.nom }}</div>
+        </div>
+        <div class="box-row">
+            <div class="box-label">Objet de la demande</div>
+            <div class="box-value">{{ revue.objet }}</div>
+        </div>
+
+        <div class="box-row">
+            <div class="box-col">
+                <div class="box-label">Référence de la demande :</div>
+                <div class="box-value">{{ revue.reference|default:"-" }}</div>
+            </div>
+            <div class="box-col">
+                <div class="box-label">Date de la demande :</div>
+                <div class="box-value">{{ revue.date_demande|date:"d/m/Y" }}</div>
+            </div>
+        </div>
+
+        <div class="box-row">
+            <div class="box-col">
+                <div class="box-label">Type de réception de la demande :</div>
+                <div class="box-value">{{ revue.get_type_reception_demande_display|default:"-" }}</div>
+            </div>
+            <div class="box-col">
+                <div class="box-label">Nature de la prestation :</div>
+                <div class="box-value">{{ revue.get_nature_prestation_display|default:"-" }}</div>
+            </div>
+        </div>
+
+        <div class="box-row">
+            <div class="box-col">
+                <div class="box-label">Type de revue :</div>
+                <div class="box-value">{{ revue.get_type_revue_display|default:"-" }}</div>
+            </div>
+            <div class="box-col">
+                <div class="box-label">Etat de la revue :</div>
+                <div class="box-value">{{ revue.get_etat_revue_display|default:"-" }}</div>
+            </div>
+        </div>
+
+        <p style="font-style: italic; font-size: 8.5px; margin: 4px 0;">
+            * Les écarts demandés par le client n’ont pas d’incidence sur l’intégrité du laboratoire ou des résultats.
+        </p>
+
+        <!-- CHECKLIST: EXIGENCES CLIENT -->
+        <div class="section-title">Exigences client</div>
+        
+        <div class="checklist-row">
+            <div class="chk-text">Les exigences du client (données du marché) sont : Définies, Documentées et Comprises</div>
+            <div class="chk-val">{{ revue.q1_exigences }}</div>
+            <div class="chk-note">{{ revue.q1_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">La méthode demandée par le client est appropriée , et/ou non périmée</div>
+            <div class="chk-val">{{ revue.q2_methode }}</div>
+            <div class="chk-note">{{ revue.q2_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Demande des incertitudes sur les résultats</div>
+            <div class="chk-val">{{ revue.q3_incertitudes }}</div>
+            <div class="chk-note">{{ revue.q3_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">prestation échantillonnage</div>
+            <div class="chk-val">{{ revue.q4_echantillonnage }}</div>
+            <div class="chk-note">{{ revue.q4_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Acheminement des échantillons au laboratoire sous la responsabilité du client</div>
+            <div class="chk-val">{{ revue.q5_acheminement }}</div>
+            <div class="chk-note">{{ revue.q5_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Période de conservation des échantillons au laboratoire après émission des rapports d'essais</div>
+            <div class="chk-val">{{ revue.q6_conservation }}</div>
+            <div class="chk-note">{{ revue.q6_note|default:"15 jours" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Possibilité de sous traitance de la prestation</div>
+            <div class="chk-val">{{ revue.q7_soustraitance }}</div>
+            <div class="chk-note">{{ revue.q7_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">modalités de transmission du rapport :</div>
+            <div class="chk-val">{{ revue.q8_transmission }}</div>
+            <div class="chk-note">{{ revue.q8_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Coopération, conseil et informations demandés</div>
+            <div class="chk-val">{{ revue.q9_cooperation }}</div>
+            <div class="chk-note">{{ revue.q9_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Le client demande avis et interpretation</div>
+            <div class="chk-val">{{ revue.q10_avis }}</div>
+            <div class="chk-note">{{ revue.q10_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Le client demande une déclaration de conformité :</div>
+            <div class="chk-val">{{ revue.q11_declaration }}</div>
+            <div class="chk-note">{{ revue.q11_note|default:"-" }}</div>
+        </div>
+
+        <!-- CHECKLIST: APTITUDE -->
+        <div class="section-title">Aptitude</div>
+        
+        <div class="checklist-row">
+            <div class="chk-text">disponibilité et conformité des équipements:</div>
+            <div class="chk-val">{{ revue.q12_equipements }}</div>
+            <div class="chk-note">{{ revue.q12_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">disponibilité des ressources humaines compétentes :</div>
+            <div class="chk-val">{{ revue.q13_ressources }}</div>
+            <div class="chk-note">{{ revue.q13_note|default:"-" }}</div>
+        </div>
+        <div class="checklist-row">
+            <div class="chk-text">Les méthodes choisies (norme, etc.) sont capables de répondre aux exigences du client</div>
+            <div class="chk-val">{{ revue.q14_methodes_choisies }}</div>
+            <div class="chk-note">{{ revue.q14_note|default:"-" }}</div>
+        </div>
+
+        <!-- DISCUSSION -->
+        <div class="box-row" style="margin-top: 8px;">
+            <div class="box-label" style="height: auto; min-height: 28px;">Discussion pertinente avec client</div>
+            <div class="box-value">{{ revue.discussion_client|default:"----" }}</div>
+        </div>
+
+        <!-- SORTIE DE REVUE -->
+        <div class="section-title">Éléments de sortie de la revue</div>
+        
+        <div class="box-row">
+            <div class="box-col" style="width: 45%;">
+                <div class="box-label" style="width: 120px; min-width: 120px;">Résultat de la revue</div>
+                <div class="box-value">{{ revue.get_sortie_resultat_display|default:"-" }}</div>
+            </div>
+            <div class="box-col" style="width: 25%;">
+                <div class="box-label" style="width: 70px; min-width: 70px;">Décision :</div>
+                <div class="box-value text-center fw-bold">{{ revue.get_sortie_decision_display|default:"-" }}</div>
+            </div>
+            <div class="box-col" style="width: 30%;">
+                <div class="box-label" style="width: 110px; min-width: 110px;">pièce de références :</div>
+                <div class="box-value">{{ revue.sortie_pieces_ref|default:"-" }}</div>
+            </div>
+        </div>
+
+        <div class="box-row">
+            <div class="box-col">
+                <div class="box-label">Revue réalisée le :</div>
+                <div class="box-value">{{ revue.validation_date|date:"d/m/Y"|default:"-" }}</div>
+            </div>
+            <div class="box-col">
+                <div class="box-label">Responsable technique :</div>
+                <div class="box-value">{{ revue.validation_technique|default:"-" }}</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

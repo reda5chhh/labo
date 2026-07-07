@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags commercial_tags %}
+
+{% block title %}
+    {% if object %}{% trans "Évaluer Revue de Demande" %}{% else %}{% trans "Nouvelle Revue de Demande" %}{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'commercial:revuedemande_list' %}">{% trans "Revues de Demandes" %}</a></li>
+<li class="breadcrumb-item active">{% if object %}{% trans "Évaluation" %}{% else %}{% trans "Nouvelle" %}{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1 class="page-title text-primary font-weight-bold">
+        <i class="fa-solid fa-list-check text-primary me-2"></i>
+        {% if object %}{% trans "Évaluer la Demande" %}{% else %}{% trans "Nouvelle Revue de Demande (Faisabilité)" %}{% endif %}
+    </h1>
+    <p class="page-subtitle text-muted">{% trans "Fiche d'étude de faisabilité et revue de contrat" %}</p>
+</div>
+
+<div class="card shadow-sm border-0 mb-5">
+    <div class="card-body p-4">
+        <form method="post" id="revueForm">
+            {% csrf_token %}
+
+            <!-- Show all form errors explicitly -->
+            {% if form.errors %}
+            <div class="alert alert-danger mb-4" id="formErrorBlock">
+                <div class="d-flex align-items-start">
+                    <i class="fa-solid fa-circle-exclamation fs-4 me-3 mt-1"></i>
+                    <div>
+                        <strong class="fs-6">{% trans "Le formulaire contient des erreurs :" %}</strong>
+                        <ul class="mb-0 mt-2 ps-3 small">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                <li>
+                                    {% if field != '__all__' %}
+                                        <strong>{{ form|field_label:field }}</strong> : {{ error }}
+                                    {% else %}
+                                        {{ error }}
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- SECTION 1: PARTIE ADMINISTRATIVE -->
+            <div class="alert alert-info py-2 mb-4 fw-bold text-center">
+                <i class="fa-solid fa-folder me-2"></i> {% trans "Partie réservée au service administratif" %}
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form.date_demande|as_crispy_field }}
+                </div>
+                <div class="col-md-8 mb-3">
+                    {{ form.reference|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    {{ form.client|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    {{ form.objet|as_crispy_field }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.ref_ao_bc|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    {{ form.lieu_execution|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.type_reception_demande|as_crispy_field }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.nature_prestation|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form.type_revue|as_crispy_field }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.etat_revue|as_crispy_field }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.ref_piece_jointe|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-4">
+                    {{ form.objet_modification|as_crispy_field }}
+                </div>
+            </div>
+
+            <!-- SECTION 2: PARTIE TECHNIQUE -->
+            <div class="alert alert-warning py-2 mb-4 fw-bold text-center text-dark">
+                <i class="fa-solid fa-gears me-2"></i> {% trans "Partie réservée au service technique" %}
+            </div>
+
+            <div class="row">
+                <!-- Left Column: Traitement de la demande (14 Questions Table) -->
+                <div class="col-lg-8">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <i class="fa-solid fa-clipboard-question text-warning me-2"></i>
+                        {% trans "Traitement de la demande (Checklist)" %}
+                    </h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle bg-white" id="checklistTable">
+                            <thead style="background-color: #f8fafc; color: #334155;">
+                                <tr>
+                                    <th style="width: 50px;" class="text-center">N°</th>
+                                    <th>{% trans "Questions / Exigences à évaluer" %}</th>
+                                    <th style="width: 130px;" class="text-center">{% trans "Évaluation" %}</th>
+                                    <th>{% trans "Notes / Constats" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Q1 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">1</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Les exigences du client (données du marché) sont : Définies, Documentées et Comprises" %}</td>
+                                    <td>{{ form.q1_exigences }}</td>
+                                    <td>{{ form.q1_note }}</td>
+                                </tr>
+                                <!-- Q2 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">2</td>
+                                    <td class="small fw-semibold text-dark">{% trans "La méthode demandée par le client est appropriée et/ou non périmée" %}</td>
+                                    <td>{{ form.q2_methode }}</td>
+                                    <td>{{ form.q2_note }}</td>
+                                </tr>
+                                <!-- Q3 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">3</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Demande des incertitudes sur les résultats" %}</td>
+                                    <td>{{ form.q3_incertitudes }}</td>
+                                    <td>{{ form.q3_note }}</td>
+                                </tr>
+                                <!-- Q4 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">4</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Prestation échantillonnage" %}</td>
+                                    <td>{{ form.q4_echantillonnage }}</td>
+                                    <td>{{ form.q4_note }}</td>
+                                </tr>
+                                <!-- Q5 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">5</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Acheminement des échantillons au laboratoire sous la responsabilité du client" %}</td>
+                                    <td>{{ form.q5_acheminement }}</td>
+                                    <td>{{ form.q5_note }}</td>
+                                </tr>
+                                <!-- Q6 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">6</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Période de conservation des échantillons au laboratoire après émission des rapports d'essais" %}</td>
+                                    <td>{{ form.q6_conservation }}</td>
+                                    <td>{{ form.q6_note }}</td>
+                                </tr>
+                                <!-- Q7 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">7</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Possibilité de sous-traitance de la prestation" %}</td>
+                                    <td>{{ form.q7_soustraitance }}</td>
+                                    <td>{{ form.q7_note }}</td>
+                                </tr>
+                                <!-- Q8 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">8</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Les modalités de transmission du rapport" %}</td>
+                                    <td>{{ form.q8_transmission }}</td>
+                                    <td>{{ form.q8_note }}</td>
+                                </tr>
+                                <!-- Q9 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">9</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Coopération, conseil et informations demandés" %}</td>
+                                    <td>{{ form.q9_cooperation }}</td>
+                                    <td>{{ form.q9_note }}</td>
+                                </tr>
+                                <!-- Q10 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">10</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Le client demande avis et interprétation" %}</td>
+                                    <td>{{ form.q10_avis }}</td>
+                                    <td>{{ form.q10_note }}</td>
+                                </tr>
+                                <!-- Q11 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">11</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Le client demande une déclaration de conformité" %}</td>
+                                    <td>{{ form.q11_declaration }}</td>
+                                    <td>{{ form.q11_note }}</td>
+                                </tr>
+                                <!-- Q12 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">12</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Disponibilité et conformité des équipements" %}</td>
+                                    <td>{{ form.q12_equipements }}</td>
+                                    <td>{{ form.q12_note }}</td>
+                                </tr>
+                                <!-- Q13 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">13</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Disponibilité des ressources humaines compétentes" %}</td>
+                                    <td>{{ form.q13_ressources }}</td>
+                                    <td>{{ form.q13_note }}</td>
+                                </tr>
+                                <!-- Q14 -->
+                                <tr>
+                                    <td class="text-center fw-bold text-secondary">14</td>
+                                    <td class="small fw-semibold text-dark">{% trans "Les méthodes choisies (norme, etc.) sont appropriées et capables de répondre aux exigences du client" %}</td>
+                                    <td>{{ form.q14_methodes_choisies }}</td>
+                                    <td>{{ form.q14_note }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right Column: Discussion, Sortie, Validation -->
+                <div class="col-lg-4">
+                    <!-- Discussion -->
+                    <div class="card bg-light border-0 shadow-sm mb-3">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                                <i class="fa-solid fa-comments text-primary me-2"></i> {% trans "Discussion" %}
+                            </h6>
+                            {{ form.discussion_client|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <!-- Sortie de revue -->
+                    <div class="card bg-light border-0 shadow-sm mb-3">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                                <i class="fa-solid fa-right-from-bracket text-success me-2"></i> {% trans "Eléments de sortie de revue" %}
+                            </h6>
+                            {{ form.sortie_resultat|as_crispy_field }}
+                            {{ form.sortie_decision|as_crispy_field }}
+                            {{ form.sortie_pieces_ref|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <!-- Validation -->
+                    <div class="card bg-light border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                                <i class="fa-solid fa-signature text-danger me-2"></i> {% trans "Validation et signature" %}
+                            </h6>
+                            {{ form.validation_date|as_crispy_field }}
+                            {{ form.validation_technique|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions buttons -->
+            <div class="d-flex gap-2 mt-4 pt-3 border-top justify-content-end">
+                {% if object %}
+                <a href="{% url 'commercial:revuedemande_print' object.pk %}" target="_blank" class="btn btn-outline-primary px-4">
+                    <i class="fa-solid fa-print me-1"></i>
+                    {% trans "Imprimer" %}
+                </a>
+                {% endif %}
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer la revue" %}
+                </button>
+                <a href="{% url 'commercial:revuedemande_list' %}" class="btn btn-outline-secondary px-4">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #checklistTable select {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        border-radius: 6px;
+    }
+    #checklistTable input {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        border-radius: 6px;
+    }
+</style>
+{% endblock %}

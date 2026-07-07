@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Tableau de Bord Finance & Comptabilité" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Tableau de Bord" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-chart-pie text-primary me-2"></i>
+                {% trans "Comptabilité & Tableau de Bord" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Indicateurs de performance financière, trésorerie et exports comptables" %}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'finance:export_ventes' %}" class="btn btn-outline-primary shadow-sm">
+                <i class="fa-solid fa-file-export me-1"></i>
+                {% trans "Export Journal des Ventes" %}
+            </a>
+            <a href="{% url 'finance:export_achats' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-file-export me-1"></i>
+                {% trans "Export Journal des Achats" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Synthèse des Indicateurs Financiers (KPIs) -->
+<div class="row g-3 mb-4">
+    <!-- CA Total -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small uppercase fw-bold">{% trans "Chiffre d'Affaires" %}</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-dark">{{ ca_total }} DH</h3>
+                    <small class="text-muted">{% trans "Factures validées" %}</small>
+                </div>
+                <div class="bg-primary-subtle p-3 rounded-circle text-primary">
+                    <i class="fa-solid fa-file-invoice-dollar fa-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Encaissements -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small uppercase fw-bold">{% trans "Total Recouvré" %}</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-success">{{ total_encaissements }} DH</h3>
+                    <small class="text-muted">{% trans "Encaissements réels" %}</small>
+                </div>
+                <div class="bg-success-subtle p-3 rounded-circle text-success">
+                    <i class="fa-solid fa-wallet fa-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reste à recouvrer -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small uppercase fw-bold">{% trans "Reste à Recouvrer" %}</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-danger">{{ reste_a_recouvrer }} DH</h3>
+                    <small class="text-muted">{% trans "Créances clients" %}</small>
+                </div>
+                <div class="bg-danger-subtle p-3 rounded-circle text-danger">
+                    <i class="fa-solid fa-shield-halved fa-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Solde Caisse -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small uppercase fw-bold">{% trans "Solde Petite Caisse" %}</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-info">{{ solde_caisse }} DH</h3>
+                    <small class="text-muted">{% trans "Disponibilités espèces" %}</small>
+                </div>
+                <div class="bg-info-subtle p-3 rounded-circle text-info">
+                    <i class="fa-solid fa-coins fa-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Dernières Factures émise -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark fw-bold">
+                    <i class="fa-solid fa-file-invoice text-muted me-2"></i>{% trans "Dernières Factures Émises" %}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "N° Facture" %}</th>
+                                <th>{% trans "Client" %}</th>
+                                <th>{% trans "Montant TTC" %}</th>
+                                <th>{% trans "Statut" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in recent_factures %}
+                            <tr>
+                                <td class="fw-bold">{{ f.reference }}</td>
+                                <td>{{ f.client.nom }}</td>
+                                <td class="fw-semibold">{{ f.montant_ttc }} DH</td>
+                                <td>
+                                    {% if f.statut == 'PAYEE' %}
+                                    <span class="badge bg-success">{% trans "Payée" %}</span>
+                                    {% elif f.statut == 'PAYEE_PARTIEL' %}
+                                    <span class="badge bg-warning text-dark">{% trans "Partielle" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{% trans "Brouillon/Validée" %}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">{% trans "Aucune facture." %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Derniers Mouvements Caisse -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark fw-bold">
+                    <i class="fa-solid fa-cash-register text-muted me-2"></i>{% trans "Derniers Mouvements de Caisse" %}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Référence" %}</th>
+                                <th>{% trans "Date" %}</th>
+                                <th>{% trans "Description" %}</th>
+                                <th class="text-end">{% trans "Montant" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in recent_mouvements %}
+                            <tr>
+                                <td class="fw-bold">{{ m.reference }}</td>
+                                <td>{{ m.date_mouvement|date:"d/m/Y" }}</td>
+                                <td>{{ m.motif }}</td>
+                                <td class="text-end fw-bold {% if m.type_mouvement == 'ENTREE' %}text-success{% else %}text-danger{% endif %}">
+                                    {% if m.type_mouvement == 'ENTREE' %}+{% else %}-{% endif %}{{ m.montant }} DH
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">{% trans "Aucun mouvement." %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

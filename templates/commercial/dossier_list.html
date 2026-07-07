@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Table des dossiers" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Dossiers" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary font-weight-bold">
+                <i class="fa-solid fa-folder-open text-primary me-2"></i>
+                {% trans "Table des dossiers" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Gestion et suivi des dossiers d'affaires" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'commercial:dossier_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouveau Dossier" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- FILTERS CONTAINER -->
+<div class="card shadow-sm border-0 mb-4 bg-light">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Du" %}</label>
+                <input type="date" name="date_du" class="form-control" value="{{ request.GET.date_du }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Au" %}</label>
+                <input type="date" name="date_au" class="form-control" value="{{ request.GET.date_au }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Etat d'accréditation" %}</label>
+                <select name="accreditation" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    <option value="ACCREDITE" {% if request.GET.accreditation == 'ACCREDITE' %}selected{% endif %}>{% trans "Accrédité" %}</option>
+                    <option value="NON_ACCREDITE" {% if request.GET.accreditation == 'NON_ACCREDITE' %}selected{% endif %}>{% trans "Non accrédité" %}</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Client" %}</label>
+                <select name="client" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for c in clients_list %}
+                    <option value="{{ c.id }}" {% if request.GET.client == c.id|stringformat:"i" %}selected{% endif %}>{{ c.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Prestation" %}</label>
+                <input type="text" name="prestation" class="form-control" placeholder="{% trans 'Rechercher prestation...' %}" value="{{ request.GET.prestation }}">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "Etat Dossier" %}</label>
+                <select name="etat_dossier" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for val, label in statut_choices %}
+                    <option value="{{ val }}" {% if request.GET.etat_dossier == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Responsable" %}</label>
+                <select name="responsable" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for u in users_list %}
+                    <option value="{{ u.id }}" {% if request.GET.responsable == u.id|stringformat:"i" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-secondary">{% trans "N° Dossier" %}</label>
+                <input type="text" name="num_dossier" class="form-control" placeholder="DOS-..." value="{{ request.GET.num_dossier }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">{% trans "Type client" %}</label>
+                <select name="type_client" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for val, label in type_client_choices %}
+                    <option value="{{ val }}" {% if request.GET.type_client == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-search me-1"></i> {% trans "Filtrer" %}
+                </button>
+                <a href="{% url 'commercial:dossier_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TABLE -->
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="dossiersTable">
+                <thead style="background-color: #e6edf7; color: #1a3052;">
+                    <tr>
+                        <th>{% trans "N° Dossier" %}</th>
+                        <th>{% trans "Date dossier" %}</th>
+                        <th>{% trans "Commande" %}</th>
+                        <th>{% trans "Clients" %}</th>
+                        <th>{% trans "Projet" %}</th>
+                        <th>{% trans "Prestation" %}</th>
+                        <th>{% trans "Responsable" %}</th>
+                        <th>{% trans "Etat dossier" %}</th>
+                        <th class="text-end" style="width: 120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in dossiers %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ d.reference }}</td>
+                        <td>{{ d.date_ouverture|date:"d/m/Y" }}</td>
+                        <td>{{ d.commande|default:"-" }}</td>
+                        <td class="fw-semibold text-dark">{{ d.client.nom }}</td>
+                        <td>{{ d.nom_projet|truncatechars:40 }}</td>
+                        <td>{{ d.prestation|default:"-" }}</td>
+                        <td>{{ d.chef_projet.get_full_name|default:d.chef_projet.username }}</td>
+                        <td>
+                            {% if d.statut == 'CLOTURE' %}
+                            <span class="badge-status badge-status-success">{{ d.get_statut_display }}</span>
+                            {% elif d.statut == 'ANNULE' %}
+                            <span class="badge-status badge-status-danger">{{ d.get_statut_display }}</span>
+                            {% else %}
+                            <span class="badge-status badge-status-info">{{ d.get_statut_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{% url 'commercial:dossier_detail' d.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Détail' %}">
+                                    <i class="fa-solid fa-eye text-secondary"></i>
+                                </a>
+                                <a href="{% url 'commercial:dossier_update' d.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                <a href="{% url 'commercial:dossier_delete' d.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Supprimer' %}">
+                                    <i class="fa-solid fa-trash text-danger"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
+                            {% trans "Aucun dossier enregistré" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#dossiersTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[0, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: 8 }
+            ],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

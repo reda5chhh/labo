@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}
+    {% if object %}{% trans "Modifier Devis" %}{% else %}{% trans "Nouveau Devis" %}{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'commercial:devis_list' %}">{% trans "Devis" %}</a></li>
+<li class="breadcrumb-item active">{% if object %}{% trans "Modification" %}{% else %}{% trans "Nouveau Devis" %}{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1 class="page-title text-primary font-weight-bold">
+        <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>
+        {% if object %}{% trans "Modifier le Devis :" %} {{ object.reference }}{% else %}{% trans "Créer un Devis" %}{% endif %}
+    </h1>
+    <p class="page-subtitle text-muted">{% trans "fiche des Devis LABO-COS" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post" id="devisForm">
+            {% csrf_token %}
+            
+            {% if form.errors or formset.errors %}
+            <div class="alert alert-danger mb-4">
+                <strong><i class="fa-solid fa-triangle-exclamation me-2"></i>{% trans "Veuillez corriger les erreurs suivantes :" %}</strong>
+                <ul class="mb-0 mt-2">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for dict in formset.errors %}
+                        {% for error in dict.values %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% if form.non_field_errors %}<li>{{ form.non_field_errors }}</li>{% endif %}
+                    {% if formset.non_form_errors %}<li>{{ formset.non_form_errors }}</li>{% endif %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Principal fields -->
+            <div class="row">
+                <div class="col-12">
+                    {% crispy form %}
+                </div>
+            </div>
+
+            <!-- Price Items Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5 class="fw-bold mb-3 text-dark border-bottom pb-2">
+                        <i class="fa-solid fa-list-ol text-primary me-2"></i>
+                        {% trans "Bordereau des prix / Détails du devis" %}
+                    </h5>
+                    
+                    <!-- LIGNE D'AJOUT (Input line at the top) -->
+                    <div class="row g-2 align-items-end mb-4 p-3 border rounded" style="background-color: #f8fafc;" id="addLineContainer">
+                        <input type="hidden" id="edit_row_index" value="">
+                        
+                        <div class="col-md-1">
+                            <label class="form-label small fw-bold text-secondary">{% trans "N° prix" %}</label>
+                            <input type="text" id="temp_num_prix" class="form-control form-control-sm" placeholder="Ex: 1">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-secondary">{% trans "Désignation" %}</label>
+                            <input type="text" id="temp_designation" class="form-control form-control-sm" placeholder="{% trans 'Désignation de la prestation...' %}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small fw-bold text-secondary">{% trans "Unité" %}</label>
+                            <input type="text" id="temp_unite" class="form-control form-control-sm" placeholder="Ex: U, m², ml">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-secondary">{% trans "Quantité" %}</label>
+                            <input type="number" id="temp_quantite" class="form-control form-control-sm" value="1.00" step="0.01">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-secondary">{% trans "P.U (H.T)" %}</label>
+                            <input type="number" id="temp_prix_unitaire" class="form-control form-control-sm" value="0.00" step="0.01">
+                        </div>
+                        <div class="col-md-1">
+                            <button type="button" id="btn_add_line" class="btn btn-sm btn-success w-100 py-2">
+                                <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Valider" %}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TABLE OF SAVED LINES -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle" id="visibleItemsTable">
+                            <thead style="background-color: #e6edf7; color: #1a3052;">
+                                <tr>
+                                    <th style="width: 100px;">{% trans "N° prix" %}</th>
+                                    <th>{% trans "Désignation" %}</th>
+                                    <th style="width: 100px;">{% trans "Unité" %}</th>
+                                    <th style="width: 120px;" class="text-end">{% trans "Quantité" %}</th>
+                                    <th style="width: 150px;" class="text-end">{% trans "P.U (H.T)" %}</th>
+                                    <th style="width: 150px;" class="text-end">{% trans "Prix total (H.T)" %}</th>
+                                    <th style="width: 120px;" class="text-center">{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="visibleItemsTbody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HIDDEN DJANGO FORMSET CONTAINER -->
+            <div id="hiddenFormsetContainer" style="display: none;">
+                {{ formset.management_form }}
+                <div id="formsetForms">
+                    {% for formset_form in formset %}
+                    <div class="formset-form-group" data-index="{{ forloop.counter0 }}">
+                        {% for hidden in formset_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+                        {{ formset_form.num_prix }}
+                        {{ formset_form.designation }}
+                        {{ formset_form.unite }}
+                        {{ formset_form.quantite }}
+                        {{ formset_form.prix_unitaire }}
+                        {% if formset.can_delete %}
+                            {{ formset_form.DELETE }}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Empty form template for cloning new rows -->
+                <div id="emptyFormTemplate">
+                    <div class="formset-form-group" data-index="__prefix__">
+                        {{ formset.empty_form.num_prix }}
+                        {{ formset.empty_form.designation }}
+                        {{ formset.empty_form.unite }}
+                        {{ formset.empty_form.quantite }}
+                        {{ formset.empty_form.prix_unitaire }}
+                        {% if formset.can_delete %}
+                            {{ formset.empty_form.DELETE }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Totals Footer -->
+            <div class="row justify-content-end mt-4">
+                <div class="col-md-5">
+                    <div class="card bg-light border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-secondary">{% trans "Total H.T" %}</span>
+                                <span class="fw-bold fs-5 text-dark" id="totalHT">0,00 MAD</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-secondary">{% trans "TVA 20 %" %}</span>
+                                <span class="fw-bold fs-5 text-dark" id="totalTVA">0,00 MAD</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-primary">{% trans "Total TTC" %}</span>
+                                <span class="fw-bold fs-4 text-success" id="totalTTC">0,00 MAD</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation -->
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="fa-solid fa-circle-check me-1"></i>
+                    {% trans "Valider le Devis" %}
+                </button>
+                <a href="{% url 'commercial:devis_list' %}" class="btn btn-outline-secondary px-4">
+                    <i class="fa-solid fa-circle-xmark me-1"></i>
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize visible table from existing hidden formset data (on edit)
+        function initVisibleTable() {
+            $('#formsetForms .formset-form-group').each(function() {
+                const index = $(this).data('index');
+                const numPrix = $(this).find('input[name$="-num_prix"]').val();
+                const designation = $(this).find('input[name$="-designation"]').val();
+                const unite = $(this).find('input[name$="-unite"]').val();
+                const quantite = parseFloat($(this).find('input[name$="-quantite"]').val()) || 0;
+                const prixUnitaire = parseFloat($(this).find('input[name$="-prix_unitaire"]').val()) || 0;
+                const isDeleted = $(this).find('input[name$="-DELETE"]').is(':checked');
+
+                // Only add to visible table if it has a designation and is not deleted
+                if (designation && !isDeleted) {
+                    addVisibleRow(index, numPrix, designation, unite, quantite, prixUnitaire);
+                }
+            });
+            calculateTotals();
+        }
+
+        // Add a row to the visible table
+        function addVisibleRow(index, numPrix, designation, unite, quantite, prixUnitaire) {
+            const total = quantite * prixUnitaire;
+            const newRow = `
+                <tr data-formset-index="${index}">
+                    <td>${numPrix}</td>
+                    <td class="fw-semibold">${designation}</td>
+                    <td>${unite}</td>
+                    <td class="text-end">${quantite.toFixed(2).replace('.', ',')}</td>
+                    <td class="text-end">${prixUnitaire.toFixed(2).replace('.', ',')} MAD</td>
+                    <td class="text-end fw-bold text-secondary">${total.toFixed(2).replace('.', ',')} MAD</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs btn-outline-primary btn-edit-row me-1">
+                            <i class="fa-solid fa-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-danger btn-delete-row">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            $('#visibleItemsTbody').append(newRow);
+        }
+
+        // Calculate and update financial footer totals
+        function calculateTotals() {
+            let totalHT = 0;
+            $('#visibleItemsTbody tr').each(function() {
+                const index = $(this).data('formset-index');
+                const formGroup = $(`.formset-form-group[data-index="${index}"]`);
+                const qty = parseFloat(formGroup.find('input[name$="-quantite"]').val()) || 0;
+                const pu = parseFloat(formGroup.find('input[name$="-prix_unitaire"]').val()) || 0;
+                totalHT += (qty * pu);
+            });
+
+            const totalTVA = totalHT * 0.20;
+            const totalTTC = totalHT + totalTVA;
+
+            $('#totalHT').text(totalHT.toFixed(2).replace('.', ',') + ' MAD');
+            $('#totalTVA').text(totalTVA.toFixed(2).replace('.', ',') + ' MAD');
+            $('#totalTTC').text(totalTTC.toFixed(2).replace('.', ',') + ' MAD');
+        }
+
+        // Handle Add/Modify button click
+        $('#btn_add_line').click(function() {
+            const numPrix = $('#temp_num_prix').val().trim();
+            const designation = $('#temp_designation').val().trim();
+            const unite = $('#temp_unite').val().trim();
+            const quantite = parseFloat($('#temp_quantite').val()) || 0;
+            const prixUnitaire = parseFloat($('#temp_prix_unitaire').val()) || 0;
+
+            if (!designation) {
+                alert("{% trans 'Veuillez saisir une désignation.' %}");
+                return;
+            }
+
+            const editIndex = $('#edit_row_index').val();
+
+            if (editIndex !== "") {
+                // MODIFY MODE
+                const index = parseInt(editIndex);
+                const formGroup = $(`.formset-form-group[data-index="${index}"]`);
+                
+                // Update hidden formset fields
+                formGroup.find('input[name$="-num_prix"]').val(numPrix);
+                formGroup.find('input[name$="-designation"]').val(designation);
+                formGroup.find('input[name$="-unite"]').val(unite);
+                formGroup.find('input[name$="-quantite"]').val(quantite);
+                formGroup.find('input[name$="-prix_unitaire"]').val(prixUnitaire);
+
+                // Update visible row
+                const row = $(`#visibleItemsTbody tr[data-formset-index="${index}"]`);
+                const total = quantite * prixUnitaire;
+                row.find('td:nth-child(1)').text(numPrix);
+                row.find('td:nth-child(2)').text(designation);
+                row.find('td:nth-child(3)').text(unite);
+                row.find('td:nth-child(4)').text(quantite.toFixed(2).replace('.', ','));
+                row.find('td:nth-child(5)').text(prixUnitaire.toFixed(2).replace('.', ',') + ' MAD');
+                row.find('td:nth-child(6)').text(total.toFixed(2).replace('.', ',') + ' MAD');
+
+                // Reset button and state
+                $('#btn_add_line').html('<i class="fa-solid fa-plus-circle me-1"></i> {% trans "Valider" %}').removeClass('btn-warning').addClass('btn-success');
+                $('#edit_row_index').val("");
+                $('#addLineContainer').css('background-color', '#f8fafc');
+            } else {
+                // ADD MODE
+                // Find next index
+                const totalFormsInput = $('#id_details-TOTAL_FORMS');
+                let nextIndex = parseInt(totalFormsInput.val());
+
+                // Create new hidden form by cloning the empty template
+                const templateHtml = $('#emptyFormTemplate').html().replace(/__prefix__/g, nextIndex);
+                $('#formsetForms').append(templateHtml);
+
+                // Populate new hidden form
+                const formGroup = $(`.formset-form-group[data-index="${nextIndex}"]`);
+                formGroup.find('input[name$="-num_prix"]').val(numPrix);
+                formGroup.find('input[name$="-designation"]').val(designation);
+                formGroup.find('input[name$="-unite"]').val(unite);
+                formGroup.find('input[name$="-quantite"]').val(quantite);
+                formGroup.find('input[name$="-prix_unitaire"]').val(prixUnitaire);
+
+                // Update TOTAL_FORMS count
+                totalFormsInput.val(nextIndex + 1);
+
+                // Add to visible table
+                addVisibleRow(nextIndex, numPrix, designation, unite, quantite, prixUnitaire);
+            }
+
+            // Clear inputs
+            $('#temp_num_prix').val("");
+            $('#temp_designation').val("");
+            $('#temp_unite').val("");
+            $('#temp_quantite').val("1.00");
+            $('#temp_prix_unitaire').val("0.00");
+
+            calculateTotals();
+        });
+
+        // Edit row handler
+        $(document).on('click', '.btn-edit-row', function() {
+            const row = $(this).closest('tr');
+            const index = row.data('formset-index');
+            const formGroup = $(`.formset-form-group[data-index="${index}"]`);
+
+            // Load values into top inputs
+            $('#temp_num_prix').val(formGroup.find('input[name$="-num_prix"]').val());
+            $('#temp_designation').val(formGroup.find('input[name$="-designation"]').val());
+            $('#temp_unite').val(formGroup.find('input[name$="-unite"]').val());
+            $('#temp_quantite').val(formGroup.find('input[name$="-quantite"]').val());
+            $('#temp_prix_unitaire').val(formGroup.find('input[name$="-prix_unitaire"]').val());
+
+            // Set edit mode
+            $('#edit_row_index').val(index);
+            $('#btn_add_line').html('<i class="fa-solid fa-check-double me-1"></i> {% trans "Modifier" %}').removeClass('btn-success').addClass('btn-warning');
+            $('#addLineContainer').css('background-color', '#fffbeb'); // Subtle warning yellow background during edit
+        });
+
+        // Delete row handler
+        $(document).on('click', '.btn-delete-row', function() {
+            if (confirm("{% trans 'Voulez-vous vraiment supprimer cette ligne ?' %}")) {
+                const row = $(this).closest('tr');
+                const index = row.data('formset-index');
+                const formGroup = $(`.formset-form-group[data-index="${index}"]`);
+
+                // Mark as deleted in hidden formset
+                formGroup.find('input[name$="-DELETE"]').prop('checked', true);
+
+                // Remove visible row
+                row.remove();
+
+                calculateTotals();
+            }
+        });
+
+        // Initialize table
+        initVisibleTable();
+    });
+</script>
+{% endblock %}

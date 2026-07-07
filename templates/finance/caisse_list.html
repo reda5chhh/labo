@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gestion de la Caisse" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Caisse" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-cash-register text-primary me-2"></i>
+                {% trans "Gestion de la Petite Caisse" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Journal des flux de trésorerie (espèces) de l'établissement" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'finance:mouvementcaisse_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Nouveau Mouvement" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Widget Solde de Caisse -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-primary text-white p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-white-50 small uppercase fw-bold">{% trans "Solde Actuel de Caisse" %}</span>
+                    <h2 class="mb-0 mt-1 fw-bold">{{ solde_caisse }} DH</h2>
+                </div>
+                <div class="bg-white-10 p-3 rounded-circle">
+                    <i class="fa-solid fa-coins fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">
+            <i class="fa-solid fa-history text-muted me-2"></i>{% trans "Journal des mouvements de caisse" %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="caisseTable">
+                <thead>
+                    <tr>
+                        <th>{% trans "Référence" %}</th>
+                        <th>{% trans "Date Mouvement" %}</th>
+                        <th>{% trans "Type" %}</th>
+                        <th>{% trans "Motif / Description" %}</th>
+                        <th class="text-end">{% trans "Montant" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in mouvements %}
+                    <tr>
+                        <td class="fw-bold">{{ m.reference }}</td>
+                        <td>{{ m.date_mouvement|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if m.type_mouvement == 'ENTREE' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="fa-solid fa-arrow-down me-1"></i>{% trans "Entrée" %}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="fa-solid fa-arrow-up me-1"></i>{% trans "Sortie" %}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-dark">{{ m.motif }}</td>
+                        <td class="text-end fw-bold {% if m.type_mouvement == 'ENTREE' %}text-success{% else %}text-danger{% endif %}">
+                            {% if m.type_mouvement == 'ENTREE' %}+{% else %}-{% endif %}{{ m.montant }} DH
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#caisseTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[1, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

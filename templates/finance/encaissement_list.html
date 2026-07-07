@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Encaissements Clients" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Encaissements" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-wallet text-primary me-2"></i>
+                {% trans "Encaissements Clients" %}
+            </h1>
+            <p class="page-subtitle">{% trans "Journal des paiements et règlements reçus des clients" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'finance:encaissement_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus-circle me-1"></i>
+                {% trans "Enregistrer un Encaissement" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="encaissementsTable">
+                <thead>
+                    <tr>
+                        <th>{% trans "Référence" %}</th>
+                        <th>{% trans "N° Facture" %}</th>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Date Règlement" %}</th>
+                        <th>{% trans "Moyen de Paiement" %}</th>
+                        <th>{% trans "Réf Transaction" %}</th>
+                        <th>{% trans "Banque émettrice" %}</th>
+                        <th class="text-end">{% trans "Montant" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enc in encaissements %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ enc.reference }}</td>
+                        <td>
+                            <a href="{% url 'finance:facture_detail' enc.facture.id %}" class="fw-bold text-dark">
+                                {{ enc.facture.reference }}
+                            </a>
+                        </td>
+                        <td class="fw-semibold text-dark">{{ enc.facture.client.nom }}</td>
+                        <td>{{ enc.date_encaissement|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge bg-light text-secondary border">
+                                {{ enc.get_moyen_paiement_display }}
+                            </span>
+                        </td>
+                        <td><code>{{ enc.reference_transaction }}</code></td>
+                        <td>{{ enc.banque|default:"—" }}</td>
+                        <td class="text-end fw-bold text-success">{{ enc.montant }} DH</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#encaissementsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[3, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+    });
+</script>
+{% endblock %}

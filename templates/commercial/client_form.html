@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}
+    {% if object %}{% trans "Modifier Client" %}{% else %}{% trans "Nouveau Client" %}{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Commercial" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'commercial:client_list' %}">{% trans "Clients" %}</a></li>
+<li class="breadcrumb-item active">{% if object %}{% trans "Modification" %}{% else %}{% trans "Nouveau" %}{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-users text-primary me-2"></i>
+        {% if object %}{% trans "Modifier le Client :" %} {{ object.nom }}{% else %}{% trans "Ajouter un Client" %}{% endif %}
+    </h1>
+    <p class="page-subtitle">{% trans "Renseignez les coordonnées et informations administratives du client" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Show all form errors explicitly -->
+            {% if form.errors %}
+            <div class="alert alert-danger mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="fa-solid fa-circle-exclamation fs-4 me-3 mt-1"></i>
+                    <div>
+                        <strong class="fs-6">Le formulaire contient des erreurs :</strong>
+                        <ul class="mb-0 mt-2 ps-3 small">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                <li>
+                                    {% if field != '__all__' and form.fields %}
+                                        <strong>{{ field }}</strong> : {{ error }}
+                                    {% else %}
+                                        {{ error }}
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% crispy form %}
+            
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer" %}
+                </button>
+                <a href="{% url 'commercial:client_list' %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

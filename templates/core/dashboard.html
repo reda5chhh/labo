@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% load i18n humanize %}
+
+{% block title %}{% trans "Tableau de Bord" %}{% endblock %}
+{% block meta_description %}Tableau de bord principal LABO.COS App{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">{% trans "Tableau de Bord" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="page-title">
+                <i class="fa-solid fa-gauge-high text-primary me-2"></i>
+                {% trans "Tableau de Bord" %}
+            </h1>
+            <p class="page-subtitle">
+                {% trans "Bienvenue," %} <strong>{{ user.nom_complet }}</strong> —
+                <span class="text-muted">{{ today|date:"l d F Y" }}</span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                <i class="fa-solid fa-circle-check me-1"></i>
+                {% trans "Système opérationnel" %}
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- ── CARTES DE STATISTIQUES ── -->
+<div class="row g-4 mb-4">
+
+    <!-- Dossiers en cours -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card--blue">
+            <div class="stat-card-icon">
+                <i class="fa-solid fa-folder-open"></i>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value">{{ stats.nb_dossiers|intcomma }}</div>
+                <div class="stat-card-label">{% trans "Dossiers en cours" %}</div>
+            </div>
+            <div class="stat-card-footer">
+                <a href="#" class="stretched-link">
+                    {% trans "Voir les dossiers" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Devis en attente -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card--orange">
+            <div class="stat-card-icon">
+                <i class="fa-solid fa-file-invoice"></i>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value">{{ stats.nb_devis_attente|intcomma }}</div>
+                <div class="stat-card-label">{% trans "Devis en attente BC" %}</div>
+            </div>
+            <div class="stat-card-footer">
+                <a href="#" class="stretched-link">
+                    {% trans "Voir les devis" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Factures non soldées -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card--red">
+            <div class="stat-card-icon">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value">{{ stats.nb_factures_non_soldees|intcomma }}</div>
+                <div class="stat-card-label">{% trans "Factures non soldées" %}</div>
+            </div>
+            <div class="stat-card-footer">
+                <a href="#" class="stretched-link">
+                    {% trans "Voir les factures" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Réceptions en attente -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card--green">
+            <div class="stat-card-icon">
+                <i class="fa-solid fa-vials"></i>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value">{{ stats.nb_receptions_attente|intcomma }}</div>
+                <div class="stat-card-label">{% trans "Réceptions en attente" %}</div>
+            </div>
+            <div class="stat-card-footer">
+                <a href="#" class="stretched-link">
+                    {% trans "Voir les réceptions" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+<!-- /STATISTIQUES -->
+
+<!-- ── RANGÉE PRINCIPALE ── -->
+<div class="row g-4">
+
+    <!-- Accès Rapides -->
+    <div class="col-xl-4 col-lg-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="fa-solid fa-bolt text-warning me-2"></i>
+                    {% trans "Accès Rapides" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="#" class="btn btn-outline-primary btn-sm text-start">
+                        <i class="fa-solid fa-plus-circle me-2"></i>{% trans "Nouveau Devis" %}
+                    </a>
+                    <a href="#" class="btn btn-outline-success btn-sm text-start">
+                        <i class="fa-solid fa-folder-plus me-2"></i>{% trans "Nouveau Dossier" %}
+                    </a>
+                    <a href="#" class="btn btn-outline-info btn-sm text-start">
+                        <i class="fa-solid fa-flask me-2"></i>{% trans "Nouvelle Réception" %}
+                    </a>
+                    <a href="#" class="btn btn-outline-warning btn-sm text-start">
+                        <i class="fa-solid fa-file-invoice-dollar me-2"></i>{% trans "Nouvelle Facture" %}
+                    </a>
+                    <a href="#" class="btn btn-outline-secondary btn-sm text-start">
+                        <i class="fa-solid fa-upload me-2"></i>{% trans "Upload GED" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modules -->
+    <div class="col-xl-4 col-lg-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="fa-solid fa-th-large text-primary me-2"></i>
+                    {% trans "Modules" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    {% with modules=modules_list %}
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-briefcase"></i>
+                            <span>{% trans "Commercial" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>{% trans "Finance" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-microscope"></i>
+                            <span>{% trans "Technique" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-ruler-combined"></i>
+                            <span>{% trans "Métrologie" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-certificate"></i>
+                            <span>{% trans "Qualité" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-users"></i>
+                            <span>{% trans "RH" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-folder-open"></i>
+                            <span>{% trans "GED" %}</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="module-btn">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>{% trans "Achats" %}</span>
+                        </a>
+                    </div>
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dernières Activités -->
+    <div class="col-xl-4 col-12">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 pb-0 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fa-solid fa-history text-secondary me-2"></i>
+                    {% trans "Dernières Activités" %}
+                </h5>
+                <span class="badge bg-secondary-subtle text-secondary">{{ activite_globale|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="activity-feed">
+                    {% for log in activite_globale %}
+                    <div class="activity-item">
+                        <div class="activity-icon activity-icon--{{ log.action_type|lower }}">
+                            {% if log.action_type == 'CREATE' %}<i class="fa-solid fa-plus"></i>
+                            {% elif log.action_type == 'UPDATE' %}<i class="fa-solid fa-pen"></i>
+                            {% elif log.action_type == 'DELETE' %}<i class="fa-solid fa-trash"></i>
+                            {% elif log.action_type == 'LOGIN' %}<i class="fa-solid fa-right-to-bracket"></i>
+                            {% elif log.action_type == 'VALIDATE' %}<i class="fa-solid fa-check"></i>
+                            {% else %}<i class="fa-solid fa-circle-dot"></i>{% endif %}
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-text">
+                                <strong>{{ log.user|default:"Système" }}</strong>
+                                {{ log.get_action_type_display|lower }}
+                                <em>{{ log.model_name }}</em>
+                            </div>
+                            <div class="activity-time">
+                                <i class="fa-regular fa-clock me-1"></i>
+                                {{ log.timestamp|timesince }} {% trans "ago" %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fa-regular fa-clock fa-2x mb-2 d-block"></i>
+                        {% trans "Aucune activité récente" %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

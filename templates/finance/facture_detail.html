@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Détails Facture" %} | {{ facture.reference }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'finance:facture_list' %}">{% trans "Factures" %}</a></li>
+<li class="breadcrumb-item active">{{ facture.reference }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="page-title">
+            <i class="fa-solid fa-file-invoice text-primary me-2"></i>
+            {% trans "Facture" %} {{ facture.reference }}
+        </h1>
+        <p class="page-subtitle">{% trans "Détails financiers et historique des encaissements" %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if not facture.validee_par_signature %}
+        <form method="post" action="{% url 'finance:facture_sign' facture.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning shadow-sm d-flex align-items-center gap-1">
+                <i class="fa-solid fa-fingerprint"></i> {% trans "Signer & Valider" %}
+            </button>
+        </form>
+        {% endif %}
+        {% if facture.statut != 'PAYEE' and facture.statut != 'ANNULEE' and facture.validee_par_signature %}
+        <a href="{% url 'finance:encaissement_create' %}?facture={{ facture.id }}" class="btn btn-success shadow-sm">
+            <i class="fa-solid fa-wallet me-1"></i> {% trans "Enregistrer Encaissement" %}
+        </a>
+        {% endif %}
+        <a href="{% url 'finance:facture_list' %}" class="btn btn-outline-secondary">
+            {% trans "Retour" %}
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Infos Facture -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark fw-bold">
+                    <i class="fa-solid fa-circle-info text-muted me-2"></i>{% trans "Informations Générales" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless align-middle mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold text-muted" style="width: 180px;">{% trans "Client" %}</td>
+                            <td class="fw-bold text-dark">{{ facture.client.nom }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold text-muted">{% trans "Date Facture" %}</td>
+                            <td>{{ facture.date_facture|date:"d/m/Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold text-muted">{% trans "Date d'Échéance" %}</td>
+                            <td>{{ facture.date_echeance|date:"d/m/Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold text-muted">{% trans "Statut" %}</td>
+                            <td>
+                                {% if facture.statut == 'BROUILLON' %}
+                                <span class="badge bg-secondary">{% trans "Brouillon" %}</span>
+                                {% elif facture.statut == 'VALIDEE' %}
+                                <span class="badge bg-primary">{% trans "Validée" %}</span>
+                                {% elif facture.statut == 'PAYEE_PARTIEL' %}
+                                <span class="badge bg-warning text-dark">{% trans "Partielle" %}</span>
+                                {% elif facture.statut == 'PAYEE' %}
+                                <span class="badge bg-success">{% trans "Payée" %}</span>
+                                {% else %}
+                                <span class="badge bg-danger">{% trans "Annulée" %}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if facture.devis %}
+                        <tr>
+                            <td class="fw-bold text-muted">{% trans "Réf Devis" %}</td>
+                            <td>{{ facture.devis.reference }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if facture.dossier %}
+                        <tr>
+                            <td class="fw-bold text-muted">{% trans "Réf Dossier" %}</td>
+                            <td>{{ facture.dossier.reference }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Récap Financier -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm border-0 h-100 bg-light-subtle">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark fw-bold">
+                    <i class="fa-solid fa-calculator text-muted me-2"></i>{% trans "Récapitulatif Financier" %}
+                </h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <table class="table table-borderless align-middle mb-4">
+                    <tbody>
+                        <tr>
+                            <td class="fw-semibold text-muted">{% trans "Total HT" %}</td>
+                            <td class="text-end fw-bold text-dark">{{ facture.montant_ht }} DH</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-muted">{% trans "TVA (20%)" %}</td>
+                            <td class="text-end fw-bold text-muted">{{ facture.montant_tva }} DH</td>
+                        </tr>
+                        <tr class="border-top">
+                            <td class="fw-bold text-dark fs-5">{% trans "Total TTC" %}</td>
+                            <td class="text-end fw-bold text-primary fs-5">{{ facture.montant_ttc }} DH</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="row g-2 text-center">
+                    <div class="col-6">
+                        <div class="bg-success-subtle p-3 rounded border border-success-subtle">
+                            <small class="text-muted d-block uppercase fw-bold">{% trans "Encaissé" %}</small>
+                            <span class="fs-4 fw-bold text-success">{{ facture.total_encaissements }} DH</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-danger-subtle p-3 rounded border border-danger-subtle">
+                            <small class="text-muted d-block uppercase fw-bold">{% trans "Reste à Payer" %}</small>
+                            <span class="fs-4 fw-bold text-danger">{{ facture.solde }} DH</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historique des Encaissements -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">
+            <i class="fa-solid fa-history text-muted me-2"></i>{% trans "Historique des Règlements reçus" %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{% trans "Référence" %}</th>
+                        <th>{% trans "Date Encaissement" %}</th>
+                        <th>{% trans "Moyen de Paiement" %}</th>
+                        <th>{% trans "Réf Transaction" %}</th>
+                        <th>{% trans "Banque" %}</th>
+                        <th class="text-end">{% trans "Montant" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enc in facture.encaissements.all %}
+                    <tr>
+                        <td class="fw-bold">{{ enc.reference }}</td>
+                        <td>{{ enc.date_encaissement|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge bg-light text-secondary border">
+                                {{ enc.get_moyen_paiement_display }}
+                            </span>
+                        </td>
+                        <td><code>{{ enc.reference_transaction }}</code></td>
+                        <td>{{ enc.banque|default:"—" }}</td>
+                        <td class="text-end fw-bold text-success">{{ enc.montant }} DH</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-ban fa-lg d-block mb-2 text-muted"></i>
+                            {% trans "Aucun encaissement enregistré pour cette facture." %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
