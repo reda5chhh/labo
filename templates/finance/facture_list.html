@@ -117,7 +117,7 @@
 
     <!-- Inputs Row 1 -->
     <div class="row g-2 mb-2">
-        <div class="col-md-4">
+        <div class="col-md-5">
             <label class="form-label small fw-bold text-muted mb-1">{% trans "Factures du" %}</label>
             <div class="input-group input-group-sm">
                 <input type="date" id="filterDateStart" class="form-control" value="2026-01-01">
@@ -125,24 +125,11 @@
                 <input type="date" id="filterDateEnd" class="form-control" value="2026-12-31">
             </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
             <label class="form-label small fw-bold text-muted mb-1">{% trans "Etat de Règlement" %}</label>
             <input type="text" id="filterEtatReglementText" class="form-control form-control-sm" placeholder="R / N / A">
         </div>
-        <div class="col-md-3">
-            <label class="form-label small fw-bold text-muted mb-1">{% trans "Type de Facture" %}</label>
-            <div class="d-flex align-items-center gap-3 pt-1">
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="filterTypeReg" id="typeEnCours" value="EN_COURS" checked>
-                    <label class="form-check-label small fw-semibold" for="typeEnCours">{% trans "En cours" %}</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="filterTypeReg" id="typeAnnule" value="ANNULE">
-                    <label class="form-check-label small fw-semibold" for="typeAnnule">{% trans "Annulé" %}</label>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <label class="form-label small fw-bold text-muted mb-1">{% trans "Montant >=" %}</label>
             <input type="number" id="filterMontantMin" class="form-control form-control-sm text-end" value="0.00" step="100">
         </div>
@@ -460,6 +447,7 @@
         $.fn.dataTable.ext.search.push(
             function(settings, data, dataIndex) {
                 const row = $(table.row(dataIndex).node());
+                const status = row.data('statut');
                 
                 // 1. Date filter range
                 const dateVal = row.find('td:eq(3)').text().trim(); // dd/mm/yyyy
@@ -515,15 +503,6 @@
                     return false;
                 }
 
-                // 7. Radio button: En cours / Annulé
-                const typeReg = $('input[name="filterTypeReg"]:checked').val();
-                const status = row.data('statut');
-                if (typeReg === 'EN_COURS' && status === 'ANNULEE') {
-                    return false;
-                }
-                if (typeReg === 'ANNULE' && status !== 'ANNULEE') {
-                    return false;
-                }
 
                 // 8. Montant >= filter
                 const montantMin = parseFloat($('#filterMontantMin').val() || 0);
@@ -581,7 +560,6 @@
             $('#filterDateStart').val('2026-01-01');
             $('#filterDateEnd').val('2026-12-31');
             $('#filterEtatReglementText').val('');
-            $('#typeEnCours').prop('checked', true);
             $('#filterMontantMin').val('0.00');
             $('#filterClient').val('');
             $('#filterBc').val('');
