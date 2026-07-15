@@ -88,12 +88,31 @@
                 <i class="fa-solid fa-plus-circle me-1"></i>
                 {% trans "Nouvelle Facture" %}
             </a>
+            {% if afficher_annules %}
+            <a href="{% url 'finance:facture_list' %}" class="btn btn-outline-secondary shadow-sm ms-2">
+                <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+            </a>
+            {% else %}
+            <a href="?afficher_annules=1" class="btn btn-outline-warning shadow-sm ms-2">
+                <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+            </a>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <!-- Zone de Filtres -->
 <div class="filter-panel shadow-sm">
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6">
+            <div class="filter-title">{% trans "Filtres de recherche" %}</div>
+        </div>
+        <div class="col-md-6 text-end">
+            <button id="refreshFiltersBtn" class="btn btn-sm btn-light border">
+                <i class="fa-solid fa-rotate-left me-1"></i>{% trans "Réinitialiser" %}
+            </button>
+        </div>
+    </div>
 
 
     <!-- Inputs Row 1 -->
@@ -306,6 +325,13 @@
                                         <i class="fa-solid fa-ban text-warning"></i>
                                     </button>
                                 </form>
+                                {% else %}
+                                <form method="post" action="{% url 'finance:facture_restore' f.id %}" class="d-inline" onsubmit="return confirm('{% trans "Confirmer la restauration de cette facture ?" %}')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}">
+                                        <i class="fa-solid fa-rotate-left text-success"></i>
+                                    </button>
+                                </form>
                                 {% endif %}
                             </div>
                         </td>
@@ -383,117 +409,28 @@
         </div>
     </div>
 
-    <!-- Panel 2: Quick Filter Options & Recouvrement (Right) -->
+    <!-- Panel 2: Recouvrement (Right) -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 bottom-panel-card h-100">
-            <div class="card-header bottom-panel-header d-flex justify-content-between align-items-center">
-                <span><i class="fa-solid fa-filter me-2"></i>{% trans "Filtres avancés & Recouvrement" %}</span>
-                <button id="refreshFiltersBtn" class="btn btn-xs btn-primary py-0 px-2" title="{% trans 'Rafraîchir les filtres' %}">
-                    <i class="fa-solid fa-rotate"></i>
-                </button>
+            <div class="card-header bottom-panel-header">
+                <i class="fa-solid fa-shield-halved me-2"></i>{% trans "Mise à jour Recouvrement" %}
             </div>
-            <div class="card-body">
-                <!-- Group 1: Règlement -->
-                <div class="filter-checkbox-group mb-2">
-                    <div class="fw-bold small mb-1 text-primary">{% trans "Règlement" %}</div>
-                    <div class="d-flex flex-column gap-1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regTous" value="ALL" checked>
-                            <label class="form-check-label small" for="regTous">{% trans "Tous" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regNonSolde" value="NON_SOLDE">
-                            <label class="form-check-label small" for="regNonSolde">{% trans "Non soldé" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regSolde" value="SOLDE">
-                            <label class="form-check-label small" for="regSolde">{% trans "Soldé" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regEnInstance" value="BROUILLON">
-                            <label class="form-check-label small" for="regEnInstance">{% trans "En instance" %}</label>
-                        </div>
+            <div class="card-body d-flex flex-column justify-content-center">
+                <label class="form-label small fw-bold text-muted mb-2">{% trans "Mettre à jour la difficulté de recouvrement de la facture" %}</label>
+                <form method="post" id="recouvrementForm" action="">
+                    {% csrf_token %}
+                    <div class="input-group input-group-sm">
+                        <select name="difficulte" id="difficulteSelect" class="form-select form-select-sm">
+                            <option value="RECOUVRABLE">{% trans "Recouvrable" %}</option>
+                            <option value="DIFFICILE">{% trans "Difficile" %}</option>
+                            <option value="NON_RECOUVRABLE">{% trans "Non Recouvrable" %}</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>{% trans "MAJ Recouvrement" %}</span>
+                        </button>
                     </div>
-                </div>
-
-                <!-- Group 2: Envoi -->
-                <div class="filter-checkbox-group mb-2">
-                    <div class="fw-bold small mb-1 text-primary">{% trans "Envoi" %}</div>
-                    <div class="d-flex flex-column gap-1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterEnv" id="envTous" value="ALL" checked>
-                            <label class="form-check-label small" for="envTous">{% trans "Tous" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterEnv" id="envNonEnv" value="NON_ENVOYE">
-                            <label class="form-check-label small" for="envNonEnv">{% trans "Non Envoyée" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterEnv" id="envEnv" value="ENVOYE">
-                            <label class="form-check-label small" for="envEnv">{% trans "Envoyée" %}</label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 3: Accusé -->
-                <div class="filter-checkbox-group mb-2">
-                    <div class="fw-bold small mb-1 text-primary">{% trans "Accusé" %}</div>
-                    <div class="d-flex flex-column gap-1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterAcc" id="accTous" value="ALL" checked>
-                            <label class="form-check-label small" for="accTous">{% trans "Tous" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterAcc" id="accNonAcc" value="NON_ACCUSE">
-                            <label class="form-check-label small" for="accNonAcc">{% trans "Non accusée" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterAcc" id="accAcc" value="ACCUSE">
-                            <label class="form-check-label small" for="accAcc">{% trans "Accusée" %}</label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 4: Recouvrement -->
-                <div class="filter-checkbox-group mb-2">
-                    <div class="fw-bold small mb-1 text-primary">{% trans "Recouvrement" %}</div>
-                    <div class="d-flex flex-column gap-1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recTous" value="ALL" checked>
-                            <label class="form-check-label small" for="recTous">{% trans "Tous" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recRec" value="RECOUVRABLE">
-                            <label class="form-check-label small" for="recRec">{% trans "Recouvrable" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recDiff" value="DIFFICILE">
-                            <label class="form-check-label small" for="recDiff">{% trans "Difficile" %}</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recNonRec" value="NON_RECOUVRABLE">
-                            <label class="form-check-label small" for="recNonRec">{% trans "Non Recouvrable" %}</label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MAJ Action -->
-                <div class="mt-3">
-                    <form method="post" id="recouvrementForm" action="">
-                        {% csrf_token %}
-                        <div class="input-group input-group-sm">
-                            <select name="difficulte" id="difficulteSelect" class="form-select form-select-sm">
-                                <option value="RECOUVRABLE">{% trans "Recouvrable" %}</option>
-                                <option value="DIFFICILE">{% trans "Difficile" %}</option>
-                                <option value="NON_RECOUVRABLE">{% trans "Non Recouvrable" %}</option>
-                            </select>
-                            <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
-                                <i class="fa-solid fa-arrows-rotate"></i>
-                                <span>{% trans "MAJ Recouvrement" %}</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                </form>
             </div>
         </div>
     </div>
@@ -605,30 +542,30 @@
                     if (etatRegText === 'A' && !isCanceled) return false;
                 }
 
-                // --- Bottom panel quick filters ---
-                // Group 1: Règlement (Tous / Non soldé / Soldé / En instance)
-                const bottomReg = $('input[name="bottomFilterReg"]:checked').val();
+                // --- Advanced Filters ---
+                // Group 1: Règlement
+                const regVal = $('#filterRegTop').val();
                 const solde = parseFloat(row.data('solde') || 0);
-                if (bottomReg === 'NON_SOLDE' && (solde <= 0 || status === 'ANNULEE')) return false;
-                if (bottomReg === 'SOLDE' && (solde > 0 || status === 'ANNULEE')) return false;
-                if (bottomReg === 'BROUILLON' && status !== 'BROUILLON') return false;
+                if (regVal === 'NON_SOLDE' && (solde <= 0 || status === 'ANNULEE')) return false;
+                if (regVal === 'SOLDE' && (solde > 0 || status === 'ANNULEE')) return false;
+                if (regVal === 'BROUILLON' && status !== 'BROUILLON') return false;
 
-                // Group 2: Envoi (Tous / Non Envoyée / Envoyée)
-                const bottomEnv = $('input[name="bottomFilterEnv"]:checked').val();
+                // Group 2: Envoi
+                const envVal = $('#filterEnvTop').val();
                 const isEnv = row.data('envoye') === 'Oui';
-                if (bottomEnv === 'NON_ENVOYE' && isEnv) return false;
-                if (bottomEnv === 'ENVOYE' && !isEnv) return false;
+                if (envVal === 'NON_ENVOYE' && isEnv) return false;
+                if (envVal === 'ENVOYE' && !isEnv) return false;
 
-                // Group 3: Accusé (Tous / Non accusée / Accusée)
-                const bottomAcc = $('input[name="bottomFilterAcc"]:checked').val();
+                // Group 3: Accusé
+                const accVal = $('#filterAccTop').val();
                 const isAcc = row.data('accuse') === 'Oui';
-                if (bottomAcc === 'NON_ACCUSE' && isAcc) return false;
-                if (bottomAcc === 'ACCUSE' && !isAcc) return false;
+                if (accVal === 'NON_ACCUSE' && isAcc) return false;
+                if (accVal === 'ACCUSE' && !isAcc) return false;
 
-                // Group 4: Recouvrement (Tous / Recouvrable / Difficile / Non Recouvrable)
-                const bottomRec = $('input[name="bottomFilterRec"]:checked').val();
+                // Group 4: Recouvrement
+                const recVal = $('#filterRecTop').val();
                 const difficulte = row.data('difficulte');
-                if (bottomRec !== 'ALL' && difficulte !== bottomRec) return false;
+                if (recVal !== 'ALL' && difficulte !== recVal) return false;
 
                 return true;
             }
@@ -637,51 +574,6 @@
         // Apply filters on keyup/change
         $('.filter-panel input, .filter-panel select, input[name="sendMode"]').on('keyup change click', function() {
             table.draw();
-        });
-
-        $('input[name^="bottomFilter"]').on('change', function() {
-            table.draw();
-        });
-
-        // Sync top selects with bottom radios
-        $('#filterRegTop').on('change', function() {
-            const val = $(this).val();
-            $(`input[name="bottomFilterReg"][value="${val}"]`).prop('checked', true);
-            table.draw();
-        });
-        $('input[name="bottomFilterReg"]').on('change', function() {
-            const val = $(this).val();
-            $('#filterRegTop').val(val);
-        });
-
-        $('#filterEnvTop').on('change', function() {
-            const val = $(this).val();
-            $(`input[name="bottomFilterEnv"][value="${val}"]`).prop('checked', true);
-            table.draw();
-        });
-        $('input[name="bottomFilterEnv"]').on('change', function() {
-            const val = $(this).val();
-            $('#filterEnvTop').val(val);
-        });
-
-        $('#filterAccTop').on('change', function() {
-            const val = $(this).val();
-            $(`input[name="bottomFilterAcc"][value="${val}"]`).prop('checked', true);
-            table.draw();
-        });
-        $('input[name="bottomFilterAcc"]').on('change', function() {
-            const val = $(this).val();
-            $('#filterAccTop').val(val);
-        });
-
-        $('#filterRecTop').on('change', function() {
-            const val = $(this).val();
-            $(`input[name="bottomFilterRec"][value="${val}"]`).prop('checked', true);
-            table.draw();
-        });
-        $('input[name="bottomFilterRec"]').on('change', function() {
-            const val = $(this).val();
-            $('#filterRecTop').val(val);
         });
 
         $('#refreshFiltersBtn').on('click', function() {
@@ -703,11 +595,6 @@
             $('#filterAccTop').val('ALL');
             $('#filterRecTop').val('ALL');
 
-            $('input[name^="bottomFilter"]').each(function() {
-                if ($(this).val() === 'ALL') {
-                    $(this).prop('checked', true);
-                }
-            });
             table.draw();
         });
 

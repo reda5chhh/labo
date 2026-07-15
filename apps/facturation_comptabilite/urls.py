@@ -18,6 +18,7 @@ urlpatterns = [
     path('factures/<int:pk>/signer/', views.FactureSignView.as_view(), name='facture_sign'),
     path('factures/<int:pk>/recouvrement/', views.FactureUpdateRecouvrementView.as_view(), name='facture_update_recouvrement'),
     path('factures/<int:pk>/annuler/', views.FactureCancelView.as_view(), name='facture_cancel'),
+    path('factures/<int:pk>/restaurer/', views.FactureRestoreView.as_view(), name='facture_restore'),
     path('factures/ajax/load-devis-lines/', views.LoadDevisLinesView.as_view(), name='ajax_load_devis_lines'),
     path('factures/ajax/load-invoice-lines/', views.LoadInvoiceLinesView.as_view(), name='ajax_load_invoice_lines'),
     path('factures/ajax/save-line/', views.SaveInvoiceLineView.as_view(), name='ajax_save_invoice_line'),

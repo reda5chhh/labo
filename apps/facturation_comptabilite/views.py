@@ -74,6 +74,13 @@ class FactureListView(ModulePermissionMixin, ListView):
     module_name = 'finance'
     action_name = 'view'
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        afficher_annules = self.request.GET.get('afficher_annules') == '1'
+        if not afficher_annules:
+            qs = qs.exclude(statut=Facture.StatutFacture.ANNULEE)
+        return qs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -92,6 +99,7 @@ class FactureListView(ModulePermissionMixin, ListView):
         context['selected_facture'] = selected_facture
         context['all_clients'] = Client.objects.all().order_by('nom')
         context['all_dossiers'] = Dossier.objects.all().order_by('reference')
+        context['afficher_annules'] = self.request.GET.get('afficher_annules') == '1'
         return context
 
 
@@ -183,6 +191,19 @@ class FactureCancelView(ModulePermissionMixin, View):
         facture.statut = Facture.StatutFacture.ANNULEE
         facture.save()
         messages.warning(request, _(f"La facture {facture.reference} a été annulée."))
+        return redirect('finance:facture_list')
+
+
+class FactureRestoreView(ModulePermissionMixin, View):
+    """Restauration d'une facture annulée."""
+    module_name = 'finance'
+    action_name = 'change'
+
+    def post(self, request, pk, *args, **kwargs):
+        facture = get_object_or_404(Facture, pk=pk)
+        facture.statut = Facture.StatutFacture.BROUILLON
+        facture.save()
+        messages.success(request, _(f"La facture {facture.reference} a été restaurée en tant que brouillon."))
         return redirect('finance:facture_list')
 
 
