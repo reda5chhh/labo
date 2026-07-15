@@ -5,7 +5,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field
 
 from .models import (
-    Fournisseur, Facture, Encaissement,
+    Fournisseur, Facture, LigneFacture, Encaissement,
     FactureFournisseur, Paiement, MouvementCaisse, Recouvrement
 )
 
@@ -56,41 +56,71 @@ class FactureForm(BaseLaboCOSForm):
     class Meta:
         model = Facture
         exclude = [
-            'created_by', 'updated_by', 'reference', 'statut',
+            'created_by', 'updated_by', 'statut',
             'envoye', 'envoye_par', 'date_envoi',
             'accuse', 'date_accuse',
             'reglement_recu', 'date_reglement',
-            'validee_par_signature'
+            'validee_par_signature',
+            'montant_ht', 'montant_tva', 'montant_ttc'
         ]
         widgets = {
-            'notes': forms.Textarea(attrs={'rows': 3}),
             'date_facture': forms.DateInput(attrs={'type': 'date'}),
             'date_echeance': forms.DateInput(attrs={'type': 'date'}),
+            'commentaire': forms.Textarea(attrs={'rows': 2}),
+            'synthese_modification': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['reference'].required = False
+        self.fields['reference'].label = _("N° facture")
         self.helper.layout = Layout(
             Row(
-                Column('client', css_class='form-group col-md-12 mb-3'),
+                Column('reference', css_class='form-group col-md-3 mb-3'),
+                Column('date_facture', css_class='form-group col-md-3 mb-3'),
+                Column('bc', css_class='form-group col-md-2 mb-3'),
+                Column('type_facture', css_class='form-group col-md-2 mb-3'),
+                Column('delai', css_class='form-group col-md-1 mb-3'),
+                Column('avec_ras', css_class='form-group col-md-1 mb-3'),
+            ),
+            Row(
+                Column('client', css_class='form-group col-md-6 mb-3'),
+                Column('dossier', css_class='form-group col-md-6 mb-3'),
+            ),
+            Row(
+                Column('projet', css_class='form-group col-md-12 mb-3'),
+            ),
+            Row(
+                Column('commentaire', css_class='form-group col-md-6 mb-3'),
+                Column('synthese_modification', css_class='form-group col-md-6 mb-3'),
             ),
             Row(
                 Column('devis', css_class='form-group col-md-4 mb-3'),
-                Column('dossier', css_class='form-group col-md-4 mb-3'),
                 Column('decompte', css_class='form-group col-md-4 mb-3'),
-            ),
-            Row(
-                Column('date_facture', css_class='form-group col-md-6 mb-3'),
-                Column('date_echeance', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('montant_ht', css_class='form-group col-md-4 mb-3'),
-                Column('taux_tva', css_class='form-group col-md-4 mb-3'),
                 Column('difficulte_recouvrement', css_class='form-group col-md-4 mb-3'),
             ),
             Row(
                 Column('notes', css_class='form-group col-md-12 mb-3'),
             ),
+        )
+
+
+class LigneFactureForm(BaseLaboCOSForm):
+    class Meta:
+        model = LigneFacture
+        fields = ['num_prix', 'designation', 'unite', 'quantite', 'prix_unitaire']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper.layout = Layout(
+            Row(
+                Column('num_prix', css_class='form-group col-md-2 mb-2'),
+                Column('designation', css_class='form-group col-md-4 mb-2'),
+                Column('unite', css_class='form-group col-md-2 mb-2'),
+                Column('quantite', css_class='form-group col-md-2 mb-2'),
+                Column('prix_unitaire', css_class='form-group col-md-2 mb-2'),
+            )
         )
 
 

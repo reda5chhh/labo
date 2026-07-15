@@ -2,40 +2,495 @@
 {% load i18n crispy_forms_tags %}
 
 {% block title %}
-    {% if object %}{% trans "Modifier Facture" %}{% else %}{% trans "Nouvelle Facture" %}{% endif %}
-{% endblock %}
-
-{% block breadcrumb %}
-<li class="breadcrumb-item"><a href="#">{% trans "Finance" %}</a></li>
-<li class="breadcrumb-item"><a href="{% url 'finance:facture_list' %}">{% trans "Factures" %}</a></li>
-<li class="breadcrumb-item active">{% if object %}{% trans "Modification" %}{% else %}{% trans "Brouillon" %}{% endif %}</li>
+    {% if object %}{% trans "Fiche Facture" %}{% else %}{% trans "Nouveau Brouillon de Facture" %}{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">
+<style>
+    .fiche-facture-header {
+        background-color: #d2e4f7;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #b8d4f0;
+    }
+    .fiche-title {
+        font-weight: 800;
+        text-transform: uppercase;
+        font-style: italic;
+        color: #1e3a5f;
+        font-size: 1.2rem;
+        border-bottom: 2px solid #1e3a5f;
+        padding-bottom: 4px;
+    }
+    .line-builder-panel {
+        background-color: #f0f7ff;
+        border: 1px solid #cce3fd;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .table-blue-header {
+        background-color: #0078d4 !important;
+        color: white !important;
+    }
+    .totals-box {
+        background-color: #dbeaff;
+        border: 1px solid #b3d7ff;
+        border-radius: 6px;
+        padding: 12px;
+        font-weight: bold;
+    }
+    .label-red {
+        color: #c0392b;
+        font-weight: bold;
+    }
+</style>
+
+<div class="page-header mb-3">
+    <h1 class="page-title text-dark">
         <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>
-        {% if object %}{% trans "Modifier la Facture :" %} {{ object.reference }}{% else %}{% trans "Créer un Brouillon de Facture" %}{% endif %}
+        {% if object %}{% trans "Fiche facture :" %} {{ object.reference }}{% else %}{% trans "Nouvelle Fiche Facture" %}{% endif %}
     </h1>
-    <p class="page-subtitle">{% trans "Renseignez le client et le montant HT. Le montant de TVA et le TTC seront calculés automatiquement" %}</p>
+    <p class="page-subtitle text-muted">
+        {% if object %}{% trans "Gérez les lignes de votre facture et les informations de facturation." %}{% else %}{% trans "Créez l'en-tête de facture pour commencer à ajouter des lignes." %}{% endif %}
+    </p>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-4">
-        <form method="post">
-            {% csrf_token %}
-            {% crispy form %}
-            
-            <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fa-solid fa-save me-1"></i>
-                    {% trans "Enregistrer" %}
-                </button>
-                <a href="{% url 'finance:facture_list' %}" class="btn btn-outline-secondary">
-                    {% trans "Annuler" %}
-                </a>
+<!-- En-tête / Métadonnées (Fiche facture header) -->
+<form method="post" id="mainInvoiceForm" class="mb-4">
+    {% csrf_token %}
+    <div class="fiche-facture-header shadow-sm">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-3">
+                <div class="fiche-title">{% trans "Fiche Facture" %}</div>
             </div>
-        </form>
+            <div class="col-md-9 text-end">
+                <span class="text-muted small">
+                    <span class="label-red">*</span> {% trans "indique un champ obligatoire" %}
+                </span>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold label-red">{% trans "N° facture" %} *</label>
+                {{ form.reference|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold">{% trans "Date facture" %}</label>
+                {{ form.date_facture|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold">{% trans "Bc" %}</label>
+                {{ form.bc|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold">{% trans "Type facture" %}</label>
+                {{ form.type_facture|as_crispy_field }}
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small fw-bold">{% trans "Delai" %}</label>
+                {{ form.delai|as_crispy_field }}
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small fw-bold">{% trans "Avec RAS" %}</label>
+                {{ form.avec_ras|as_crispy_field }}
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">{% trans "Client" %}</label>
+                {{ form.client|as_crispy_field }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">{% trans "N° Dossier" %}</label>
+                {{ form.dossier|as_crispy_field }}
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+            <div class="col-md-12">
+                <label class="form-label small fw-bold">{% trans "Projet" %}</label>
+                {{ form.projet|as_crispy_field }}
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">{% trans "Commentaire" %}</label>
+                {{ form.commentaire|as_crispy_field }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">{% trans "Synthèse de modification" %}</label>
+                {{ form.synthese_modification|as_crispy_field }}
+            </div>
+        </div>
+
+        <!-- Hidden default/other fields -->
+        <div class="d-none">
+            {{ form.devis }}
+            {{ form.decompte }}
+            {{ form.difficulte_recouvrement }}
+            {{ form.notes }}
+        </div>
+    </div>
+</form>
+
+{% if object %}
+<!-- Zone d'importation (Quote/Invoice import) -->
+<div class="line-builder-panel shadow-sm mb-3">
+    <div class="row align-items-center">
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-dark"><i class="fa-solid fa-file-import me-1 text-primary"></i>{% trans "Sélectionner à partir de :" %}</label>
+            <div class="d-flex gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="sourceType" id="sourceDevis" value="devis" checked>
+                    <label class="form-check-label small fw-semibold" for="sourceDevis">{% trans "Devis" %}</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="sourceType" id="sourceFacture" value="facture">
+                    <label class="form-check-label small fw-semibold" for="sourceFacture">{% trans "Facture" %}</label>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small fw-bold text-dark">{% trans "Document source" %}</label>
+            <!-- Dropdown for quotes -->
+            <select id="sourceDocumentSelect" class="form-select form-select-sm">
+                <option value="">{% trans "-- Choisir un devis accepté --" %}</option>
+                {% for d in all_devis %}
+                <option value="{{ d.id }}" data-type="devis">{{ d.reference }} - {{ d.objet }} ({{ d.montant_ht }} DH)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 pt-3">
+            <button type="button" id="importBulkBtn" class="btn btn-sm btn-primary w-100 fw-bold">
+                <i class="fa-solid fa-download me-1"></i>{% trans "Charger" %}
+            </button>
+        </div>
     </div>
 </div>
+
+<!-- Lignes de Facture Builder (Image 2 dynamic inputs) -->
+<div class="line-builder-panel shadow-sm">
+    <div class="fw-bold mb-2 text-primary uppercase small"><i class="fa-solid fa-pencil me-1"></i>{% trans "Ajouter / Modifier une ligne de prestation" %}</div>
+    <div class="row g-2 align-items-end">
+        <input type="hidden" id="activeLineId" value="">
+        <div class="col-md-2">
+            <label class="form-label small fw-bold mb-1">{% trans "N° prix" %}</label>
+            <input type="text" id="lineNumPrix" class="form-control form-control-sm" placeholder="Ex: 1.1">
+        </div>
+        <div class="col-md-5">
+            <label class="form-label small fw-bold mb-1">{% trans "Désignation" %}</label>
+            <input type="text" id="lineDesignation" class="form-control form-control-sm" placeholder="Description de la prestation">
+        </div>
+        <div class="col-md-1">
+            <label class="form-label small fw-bold mb-1">{% trans "Unité" %}</label>
+            <input type="text" id="lineUnite" class="form-control form-control-sm" placeholder="U, m³, t...">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold mb-1">{% trans "Quantité" %}</label>
+            <input type="number" id="lineQuantite" class="form-control form-control-sm text-end" value="1.00" step="0.01">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold mb-1">{% trans "P.U (H.T)" %}</label>
+            <div class="input-group input-group-sm">
+                <input type="number" id="linePrixUnitaire" class="form-control form-control-sm text-end" value="0.00" step="0.01">
+                <button type="button" id="saveLineBtn" class="btn btn-success">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table des lignes -->
+<div class="card shadow-sm border-0 mb-3 rounded-0">
+    <div class="card-body p-0">
+        <table class="table table-hover table-bordered align-middle mb-0" id="linesTable">
+            <thead>
+                <tr>
+                    <th class="table-blue-header" style="width: 10%;">{% trans "N° prix" %}</th>
+                    <th class="table-blue-header" style="width: 50%;">{% trans "Désignation" %}</th>
+                    <th class="table-blue-header" style="width: 10%;">{% trans "Unité" %}</th>
+                    <th class="table-blue-header text-end" style="width: 10%;">{% trans "Quantité" %}</th>
+                    <th class="table-blue-header text-end" style="width: 10%;">{% trans "Prix unitaire (H.T)" %}</th>
+                    <th class="table-blue-header text-end" style="width: 10%;">{% trans "Prix total (H.T)" %}</th>
+                    <th class="table-blue-header text-center" style="width: 100px;">{% trans "Actions" %}</th>
+                </tr>
+            </thead>
+            <tbody id="linesTableBody">
+                {% for l in lignes %}
+                <tr data-id="{{ l.id }}" data-num-prix="{{ l.num_prix }}" data-designation="{{ l.designation }}" data-unite="{{ l.unite }}" data-quantite="{{ l.quantite }}" data-prix-unitaire="{{ l.prix_unitaire }}">
+                    <td class="fw-bold">{{ l.num_prix }}</td>
+                    <td>{{ l.designation }}</td>
+                    <td>{{ l.unite }}</td>
+                    <td class="text-end">{{ l.quantite }}</td>
+                    <td class="text-end">{{ l.prix_unitaire }} DH</td>
+                    <td class="text-end fw-semibold">{{ l.prix_total }} DH</td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn btn-xs btn-outline-primary edit-line-btn" title="{% trans 'Modifier' %}">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-danger delete-line-btn" title="{% trans 'Supprimer' %}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr id="emptyLinesRow">
+                    <td colspan="7" class="text-center text-muted py-3">{% trans "Aucune ligne enregistrée pour cette facture." %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Totaux & Actions final (Bottom part) -->
+<div class="row align-items-center mb-4">
+    <!-- Payment status -->
+    <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+            <span class="small fw-bold text-muted text-uppercase">{% trans "Etat de règlement ( R N A )" %}</span>
+            <input type="text" class="form-control form-control-sm text-center fw-bold" style="width: 60px;" value="{% if object.solde <= 0 %}R{% else %}N{% endif %}" disabled>
+        </div>
+    </div>
+    
+    <!-- Real-time Totals Box -->
+    <div class="col-md-5 offset-md-3">
+        <div class="totals-box shadow-sm text-end">
+            <div class="row mb-1">
+                <div class="col-6 text-muted">{% trans "Total H.T :" %}</div>
+                <div class="col-6" id="totalHTBox">{{ object.montant_ht|default:"0.00" }} DH</div>
+            </div>
+            <div class="row mb-1">
+                <div class="col-6 text-muted">{% trans "TVA 20 % :" %}</div>
+                <div class="col-6" id="totalTVABox">{{ object.montant_tva|default:"0.00" }} DH</div>
+            </div>
+            <div class="row fs-5 border-top pt-1 mt-1 text-primary">
+                <div class="col-6">{% trans "Total TTC :" %}</div>
+                <div class="col-6" id="totalTTCBox">{{ object.montant_ttc|default:"0.00" }} DH</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div class="d-flex gap-2 justify-content-end pt-3 border-top">
+    <button type="button" id="submitFormBtn" class="btn btn-success py-2 px-4 fw-bold shadow-sm">
+        <i class="fa-solid fa-circle-check me-1"></i>{% trans "Valider" %}
+    </button>
+    <a href="{% url 'finance:facture_list' %}" class="btn btn-outline-secondary py-2 px-3">
+        <i class="fa-solid fa-circle-xmark me-1"></i>{% trans "Annuler" %}
+    </a>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Submit button triggers standard main form post
+        $('#submitFormBtn').on('click', function() {
+            $('#mainInvoiceForm').submit();
+        });
+
+        {% if object %}
+        const factureId = "{{ object.id }}";
+
+        // Gérer le changement du type de source (Devis / Facture)
+        $('input[name="sourceType"]').on('change', function() {
+            const type = $(this).val();
+            const select = $('#sourceDocumentSelect');
+            select.empty();
+
+            if (type === 'devis') {
+                select.append('<option value="">{% trans "-- Choisir un devis accepté --" %}</option>');
+                {% for d in all_devis %}
+                select.append('<option value="{{ d.id }}">{{ d.reference }} - {{ d.objet }} ({{ d.montant_ht }} DH)</option>');
+                {% endfor %}
+            } else {
+                select.append('<option value="">{% trans "-- Choisir une facture existante --" %}</option>');
+                {% for f in all_factures %}
+                select.append('<option value="{{ f.id }}">{{ f.reference }} - {{ f.client.nom }} ({{ f.montant_ttc }} DH)</option>');
+                {% endfor %}
+            }
+        });
+
+        // Charger en masse
+        $('#importBulkBtn').on('click', function() {
+            const sourceType = $('input[name="sourceType"]:checked').val();
+            const sourceId = $('#sourceDocumentSelect').val();
+
+            if (!sourceId) {
+                alert("{% trans 'Veuillez choisir un document source.' %}");
+                return;
+            }
+
+            if (confirm("{% trans 'Êtes-vous sûr ? Charger ce document va remplacer toutes les lignes actuelles.' %}")) {
+                $.ajax({
+                    url: "{% url 'finance:ajax_import_lines_bulk' %}",
+                    method: 'POST',
+                    data: {
+                        'facture_id': factureId,
+                        'source_type': sourceType,
+                        'source_id': sourceId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            renderLines(response.lines);
+                            updateTotalsBox(response.total_ht, response.total_tva, response.total_ttc);
+                            alert("{% trans 'Lignes importées avec succès !' %}");
+                        }
+                    }
+                });
+            }
+        });
+
+        // Ajouter / Modifier une ligne
+        $('#saveLineBtn').on('click', function() {
+            const numPrix = $('#lineNumPrix').val().trim();
+            const designation = $('#lineDesignation').val().trim();
+            const unite = $('#lineUnite').val().trim();
+            const quantite = $('#lineQuantite').val().trim();
+            const prixUnitaire = $('#linePrixUnitaire').val().trim();
+            const lineId = $('#activeLineId').val();
+
+            if (!designation) {
+                alert("{% trans 'Désignation est obligatoire.' %}");
+                return;
+            }
+
+            $.ajax({
+                url: "{% url 'finance:ajax_save_invoice_line' %}",
+                method: 'POST',
+                data: {
+                    'facture_id': factureId,
+                    'line_id': lineId,
+                    'num_prix': numPrix,
+                    'designation': designation,
+                    'unite': unite,
+                    'quantite': quantite,
+                    'prix_unitaire': prixUnitaire,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        renderLines(response.lines);
+                        updateTotalsBox(response.total_ht, response.total_tva, response.total_ttc);
+                        resetLineForm();
+                    }
+                }
+            });
+        });
+
+        // Clic sur Modifier ligne
+        $('#linesTableBody').on('click', '.edit-line-btn', function() {
+            const tr = $(this).closest('tr');
+            $('#activeLineId').val(tr.data('id'));
+            $('#lineNumPrix').val(tr.data('num-prix'));
+            $('#lineDesignation').val(tr.data('designation'));
+            $('#lineUnite').val(tr.data('unite'));
+            $('#lineQuantite').val(tr.data('quantite'));
+            $('#linePrixUnitaire').val(tr.data('prix-unitaire'));
+
+            // Change plus button to save icon
+            $('#saveLineBtn').html('<i class="fa-solid fa-floppy-disk"></i>').removeClass('btn-success').addClass('btn-primary');
+        });
+
+        // Supprimer ligne
+        $('#linesTableBody').on('click', '.delete-line-btn', function() {
+            const tr = $(this).closest('tr');
+            const lineId = tr.data('id');
+
+            if (confirm("{% trans 'Supprimer cette ligne ?' %}")) {
+                $.ajax({
+                    url: "{% url 'finance:ajax_delete_invoice_line' %}",
+                    method: 'POST',
+                    data: {
+                        'line_id': lineId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            renderLines(response.lines);
+                            updateTotalsBox(response.total_ht, response.total_tva, response.total_ttc);
+                        }
+                    }
+                });
+            }
+        });
+
+        function renderLines(lines) {
+            const tbody = $('#linesTableBody');
+            tbody.empty();
+
+            if (lines.length === 0) {
+                tbody.append('<tr id="emptyLinesRow"><td colspan="7" class="text-center text-muted py-3">{% trans "Aucune ligne enregistrée." %}</td></tr>');
+                return;
+            }
+
+            lines.forEach(function(l) {
+                const tr = $('<tr>', {
+                    'data-id': l.id,
+                    'data-num-prix': l.num_prix,
+                    'data-designation': l.designation,
+                    'data-unite': l.unite,
+                    'data-quantite': l.quantite,
+                    'data-prix-unitaire': l.prix_unitaire
+                });
+
+                tr.append($('<td>', { class: 'fw-bold', text: l.num_prix }));
+                tr.append($('<td>', { text: l.designation }));
+                tr.append($('<td>', { text: l.unite }));
+                tr.append($('<td>', { class: 'text-end', text: l.quantite.toFixed(2) }));
+                tr.append($('<td>', { class: 'text-end', text: l.prix_unitaire.toFixed(2) + ' DH' }));
+                tr.append($('<td>', { class: 'text-end fw-semibold', text: l.prix_total.toFixed(2) + ' DH' }));
+
+                const actionsTd = $('<td>', { class: 'text-center' });
+                const btnGroup = $('<div>', { class: 'd-flex justify-content-center gap-1' });
+                
+                btnGroup.append($('<button>', {
+                    type: 'button',
+                    class: 'btn btn-xs btn-outline-primary edit-line-btn',
+                    title: "{% trans 'Modifier' %}"
+                }).append($('<i>', { class: 'fa-solid fa-pencil' })));
+
+                btnGroup.append($('<button>', {
+                    type: 'button',
+                    class: 'btn btn-xs btn-outline-danger delete-line-btn',
+                    title: "{% trans 'Supprimer' %}"
+                }).append($('<i>', { class: 'fa-solid fa-trash' })));
+
+                actionsTd.append(btnGroup);
+                tr.append(actionsTd);
+                tbody.append(tr);
+            });
+        }
+
+        function updateTotalsBox(ht, tva, ttc) {
+            $('#totalHTBox').text(ht.toFixed(2) + ' DH');
+            $('#totalTVABox').text(tva.toFixed(2) + ' DH');
+            $('#totalTTCBox').text(ttc.toFixed(2) + ' DH');
+        }
+
+        function resetLineForm() {
+            $('#activeLineId').val('');
+            $('#lineNumPrix').val('');
+            $('#lineDesignation').val('');
+            $('#lineUnite').val('');
+            $('#lineQuantite').val('1.00');
+            $('#linePrixUnitaire').val('0.00');
+            $('#saveLineBtn').html('<i class="fa-solid fa-plus"></i>').removeClass('btn-primary').addClass('btn-success');
+        }
+        {% endif %}
+    });
+</script>
 {% endblock %}

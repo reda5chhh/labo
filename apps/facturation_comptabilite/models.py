@@ -103,12 +103,20 @@ class Facture(AuditableMixin, BaseModel):
         verbose_name=_('Décompte'),
     )
     date_facture = models.DateField(_('Date Facture'), default=datetime.date.today)
-    date_echeance = models.DateField(_('Date d\'échéance'))
+    date_echeance = models.DateField(_('Date d\'échéance'), blank=True, null=True)
     
-    montant_ht = models.DecimalField(_('Montant HT'), max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
+    bc = models.CharField(_('Bon de commande (BC)'), max_length=100, blank=True, null=True)
+    type_facture = models.CharField(_('Type facture'), max_length=50, choices=[('SITUATION', 'Situation'), ('DIRECTE', 'Directe'), ('AVOIR', 'Avoir')], default='DIRECTE')
+    delai = models.PositiveIntegerField(_('Délai de règlement (jours)'), default=30)
+    avec_ras = models.CharField(_('Avec RAS'), max_length=10, choices=[('Non', 'Non'), ('OUI_10', '10%'), ('OUI_15', '15%')], default='Non')
+    projet = models.CharField(_('Projet'), max_length=255, blank=True, null=True)
+    commentaire = models.TextField(_('Commentaire'), blank=True, null=True)
+    synthese_modification = models.TextField(_('Synthèse de modification'), blank=True, null=True)
+    
+    montant_ht = models.DecimalField(_('Montant HT'), max_digits=12, decimal_places=2, default=0.00, blank=True, validators=[MinValueValidator(0)])
     taux_tva = models.DecimalField(_('Taux TVA (%)'), max_digits=4, decimal_places=2, default=20.00)
-    montant_tva = models.DecimalField(_('Montant TVA'), max_digits=12, decimal_places=2, blank=True)
-    montant_ttc = models.DecimalField(_('Montant TTC'), max_digits=12, decimal_places=2, blank=True)
+    montant_tva = models.DecimalField(_('Montant TVA'), max_digits=12, decimal_places=2, blank=True, null=True)
+    montant_ttc = models.DecimalField(_('Montant TTC'), max_digits=12, decimal_places=2, blank=True, null=True)
     
     statut = models.CharField(
         _('Statut'),
@@ -173,6 +181,10 @@ class Facture(AuditableMixin, BaseModel):
         return 0
 
     def save(self, *args, **kwargs):
+        # Calcul automatique de la date d'échéance basé sur le délai
+        if self.date_facture and self.delai:
+            self.date_echeance = self.date_facture + datetime.timedelta(days=self.delai)
+
         # Calcul automatique des montants de TVA et TTC
         from decimal import Decimal
         if self.montant_ht is not None:
@@ -186,6 +198,76 @@ class Facture(AuditableMixin, BaseModel):
             self.reference = generate_finance_reference('FAC', Facture)
             
         super().save(*args, **kwargs)
+
+    def recalculate_totals(self):
+        """Calcule les totaux HT, TVA et TTC à partir des lignes."""
+        from decimal import Decimal
+        total_ht = self.lignes.aggregate(
+            total=models.Sum(models.F('prix_unitaire') * models.F('quantite'))
+        )['total'] or Decimal('0.00')
+        self.montant_ht = total_ht
+        self.save()
+
+
+class LigneFacture(AuditableMixin, BaseModel):
+    """
+    Ligne de détail d'une Facture (Bordereau des prix).
+    """
+    facture = models.ForeignKey(
+        Facture,
+        on_delete=models.CASCADE,
+        related_name='lignes',
+        verbose_name=_('Facture'),
+    )
+    num_prix = models.CharField(
+        _('N° prix'),
+        max_length=50,
+        blank=True,
+    )
+    designation = models.CharField(
+        _('Désignation'),
+        max_length=255,
+    )
+    unite = models.CharField(
+        _('Unité'),
+        max_length=50,
+        blank=True,
+    )
+    quantite = models.DecimalField(
+        _('Quantité'),
+        max_digits=12,
+        decimal_places=2,
+        default=1.00,
+    )
+    prix_unitaire = models.DecimalField(
+        _('Prix unitaire (H.T)'),
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    class Meta:
+        verbose_name = _('Ligne de Facture')
+        verbose_name_plural = _('Lignes de Facture')
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.designation} (x{self.quantite})"
+
+    @property
+    def prix_total(self):
+        return self.quantite * self.prix_unitaire
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.facture.recalculate_totals()
+
+    def delete(self, *args, **kwargs):
+        facture = self.facture
+        super().delete(*args, **kwargs)
+        facture.recalculate_totals()
+
+
 
 
 class Encaissement(AuditableMixin, BaseModel):

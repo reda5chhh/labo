@@ -14,12 +14,13 @@ from django.db.models import Sum, Q
 
 from apps.core.mixins import ModulePermissionMixin
 from apps.table_receptions.models import Reception
+from apps.commercial.models import Devis
 from .models import (
-    Fournisseur, Facture, Encaissement,
+    Fournisseur, Facture, LigneFacture, Encaissement,
     FactureFournisseur, Paiement, MouvementCaisse, Recouvrement
 )
 from .forms import (
-    FournisseurForm, FactureForm, EncaissementForm,
+    FournisseurForm, FactureForm, LigneFactureForm, EncaissementForm,
     FactureFournisseurForm, PaiementForm, MouvementCaisseForm, RecouvrementForm
 )
 
@@ -104,27 +105,38 @@ class FactureCreateView(ModulePermissionMixin, CreateView):
     model = Facture
     form_class = FactureForm
     template_name = 'finance/facture_form.html'
-    success_url = reverse_lazy('finance:facture_list')
     module_name = 'finance'
     action_name = 'add'
 
     def form_valid(self, form):
-        form.instance.date_echeance = form.cleaned_data.get('date_facture') + datetime.timedelta(days=30)
-        messages.success(self.request, _("La facture a été créée en tant que brouillon."))
+        messages.success(self.request, _("La facture a été créée en tant que brouillon. Vous pouvez maintenant ajouter des lignes."))
         return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('finance:facture_update', kwargs={'pk': self.object.pk})
 
 
 class FactureUpdateView(ModulePermissionMixin, UpdateView):
     model = Facture
     form_class = FactureForm
     template_name = 'finance/facture_form.html'
-    success_url = reverse_lazy('finance:facture_list')
     module_name = 'finance'
     action_name = 'change'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['lignes'] = self.object.lignes.all()
+        context['line_form'] = LigneFactureForm()
+        context['all_devis'] = Devis.objects.filter(client=self.object.client, statut='ACCEPTE')
+        context['all_factures'] = Facture.objects.filter(client=self.object.client).exclude(id=self.object.id)
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, _("La facture a été mise à jour."))
         return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('finance:facture_list')
 
 
 class FactureSignView(ModulePermissionMixin, View):
@@ -463,3 +475,197 @@ class ExportAchatsCSVView(ModulePermissionMixin, View):
                 f.get_statut_display()
             ])
         return response
+
+
+# ============================================================
+# 10. AJAX Views for Invoicing Lines (Image 2 Features)
+# ============================================================
+
+class LoadDevisLinesView(ModulePermissionMixin, View):
+    module_name = 'finance'
+    action_name = 'view'
+
+    def get(self, request, *args, **kwargs):
+        devis_id = request.GET.get('devis_id')
+        devis = get_object_or_404(Devis, id=devis_id)
+        lines = []
+        for detail in devis.details.all():
+            lines.append({
+                'num_prix': detail.num_prix,
+                'designation': detail.designation,
+                'unite': detail.unite,
+                'quantite': float(detail.quantite),
+                'prix_unitaire': float(detail.prix_unitaire),
+                'prix_total': float(detail.prix_total)
+            })
+        return JsonResponse({'lines': lines})
+
+
+class LoadInvoiceLinesView(ModulePermissionMixin, View):
+    module_name = 'finance'
+    action_name = 'view'
+
+    def get(self, request, *args, **kwargs):
+        facture_id = request.GET.get('facture_id')
+        facture = get_object_or_404(Facture, id=facture_id)
+        lines = []
+        for line in facture.lignes.all():
+            lines.append({
+                'num_prix': line.num_prix,
+                'designation': line.designation,
+                'unite': line.unite,
+                'quantite': float(line.quantite),
+                'prix_unitaire': float(line.prix_unitaire),
+                'prix_total': float(line.prix_total)
+            })
+        return JsonResponse({'lines': lines})
+
+
+class SaveInvoiceLineView(ModulePermissionMixin, View):
+    module_name = 'finance'
+    action_name = 'change'
+
+    def post(self, request, *args, **kwargs):
+        facture_id = request.POST.get('facture_id')
+        facture = get_object_or_404(Facture, id=facture_id)
+        line_id = request.POST.get('line_id')
+        
+        num_prix = request.POST.get('num_prix', '')
+        designation = request.POST.get('designation', '')
+        unite = request.POST.get('unite', '')
+        quantite = request.POST.get('quantite', '1')
+        prix_unitaire = request.POST.get('prix_unitaire', '0')
+        
+        if line_id:
+            line = get_object_or_404(LigneFacture, id=line_id, facture=facture)
+            line.num_prix = num_prix
+            line.designation = designation
+            line.unite = unite
+            line.quantite = quantite
+            line.prix_unitaire = prix_unitaire
+            line.save()
+        else:
+            line = LigneFacture.objects.create(
+                facture=facture,
+                num_prix=num_prix,
+                designation=designation,
+                unite=unite,
+                quantite=quantite,
+                prix_unitaire=prix_unitaire
+            )
+        
+        facture.recalculate_totals()
+        
+        # Render a simple dictionary of all lines to send back
+        lignes_list = []
+        for l in facture.lignes.all():
+            lignes_list.append({
+                'id': l.id,
+                'num_prix': l.num_prix,
+                'designation': l.designation,
+                'unite': l.unite,
+                'quantite': float(l.quantite),
+                'prix_unitaire': float(l.prix_unitaire),
+                'prix_total': float(l.prix_total)
+            })
+            
+        return JsonResponse({
+            'status': 'success',
+            'lines': lignes_list,
+            'total_ht': float(facture.montant_ht),
+            'total_tva': float(facture.montant_tva),
+            'total_ttc': float(facture.montant_ttc)
+        })
+
+
+class DeleteInvoiceLineView(ModulePermissionMixin, View):
+    module_name = 'finance'
+    action_name = 'change'
+
+    def post(self, request, *args, **kwargs):
+        line_id = request.POST.get('line_id')
+        line = get_object_or_404(LigneFacture, id=line_id)
+        facture = line.facture
+        line.delete()
+        
+        # Recalculate totals
+        facture.recalculate_totals()
+        
+        lignes_list = []
+        for l in facture.lignes.all():
+            lignes_list.append({
+                'id': l.id,
+                'num_prix': l.num_prix,
+                'designation': l.designation,
+                'unite': l.unite,
+                'quantite': float(l.quantite),
+                'prix_unitaire': float(l.prix_unitaire),
+                'prix_total': float(l.prix_total)
+            })
+            
+        return JsonResponse({
+            'status': 'success',
+            'lines': lignes_list,
+            'total_ht': float(facture.montant_ht),
+            'total_tva': float(facture.montant_tva),
+            'total_ttc': float(facture.montant_ttc)
+        })
+
+
+class ImportLinesBulkView(ModulePermissionMixin, View):
+    module_name = 'finance'
+    action_name = 'change'
+
+    def post(self, request, *args, **kwargs):
+        facture_id = request.POST.get('facture_id')
+        source_type = request.POST.get('source_type')
+        source_id = request.POST.get('source_id')
+        facture = get_object_or_404(Facture, id=facture_id)
+        
+        # Clear existing lines to prevent duplicates
+        facture.lignes.all().delete()
+        
+        if source_type == 'devis':
+            devis = get_object_or_404(Devis, id=source_id)
+            for d in devis.details.all():
+                LigneFacture.objects.create(
+                    facture=facture,
+                    num_prix=d.num_prix,
+                    designation=d.designation,
+                    unite=d.unite,
+                    quantite=d.quantite,
+                    prix_unitaire=d.prix_unitaire
+                )
+        elif source_type == 'facture':
+            src_facture = get_object_or_404(Facture, id=source_id)
+            for l in src_facture.lignes.all():
+                LigneFacture.objects.create(
+                    facture=facture,
+                    num_prix=l.num_prix,
+                    designation=l.designation,
+                    unite=l.unite,
+                    quantite=l.quantite,
+                    prix_unitaire=l.prix_unitaire
+                )
+                
+        facture.recalculate_totals()
+        
+        lignes_list = []
+        for l in facture.lignes.all():
+            lignes_list.append({
+                'id': l.id,
+                'num_prix': l.num_prix,
+                'designation': l.designation,
+                'unite': l.unite,
+                'quantite': float(l.quantite),
+                'prix_unitaire': float(l.prix_unitaire),
+                'prix_total': float(l.prix_total)
+            })
+            
+        return JsonResponse({
+            'status': 'success',
+            'lines': lignes_list,
+            'total_ht': float(facture.montant_ht),
+            'total_tva': float(facture.montant_tva),
+            'total_ttc': float(facture.montant_ttc)
+        })

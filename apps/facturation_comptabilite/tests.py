@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from apps.commercial.models import Client
 from apps.table_receptions.models import Reception
-from .models import Fournisseur, Facture, Encaissement, FactureFournisseur, Paiement, MouvementCaisse, Recouvrement
+from .models import Fournisseur, Facture, LigneFacture, Encaissement, FactureFournisseur, Paiement, MouvementCaisse, Recouvrement
 
 User = get_user_model()
 
@@ -45,6 +45,52 @@ class FinanceTestCase(TestCase):
         
         # Vérification de la référence
         self.assertTrue(facture.reference.startswith('FAC-'))
+
+    def test_facture_lines_and_recalculation(self):
+        """Vérifie le calcul et le recalcul des totaux de facture lors de l'ajout/suppression de lignes."""
+        facture = Facture.objects.create(
+            client=self.client_obj,
+            date_facture=datetime.date.today(),
+            montant_ht=0.00,
+            taux_tva=20.00,
+            created_by=self.user
+        )
+        self.assertEqual(facture.montant_ttc, 0.00)
+
+        # Ajouter une ligne
+        line1 = LigneFacture.objects.create(
+            facture=facture,
+            num_prix="1",
+            designation="Prestation A",
+            unite="U",
+            quantite=2.00,
+            prix_unitaire=500.00,
+            created_by=self.user
+        )
+        facture.refresh_from_db()
+        self.assertEqual(facture.montant_ht, 1000.00)
+        self.assertEqual(facture.montant_tva, 200.00)
+        self.assertEqual(facture.montant_ttc, 1200.00)
+
+        # Ajouter une autre ligne
+        line2 = LigneFacture.objects.create(
+            facture=facture,
+            num_prix="2",
+            designation="Prestation B",
+            unite="U",
+            quantite=1.50,
+            prix_unitaire=1000.00,
+            created_by=self.user
+        )
+        facture.refresh_from_db()
+        self.assertEqual(facture.montant_ht, 2500.00)
+        self.assertEqual(facture.montant_ttc, 3000.00)
+
+        # Supprimer une ligne
+        line1.delete()
+        facture.refresh_from_db()
+        self.assertEqual(facture.montant_ht, 1500.00)
+        self.assertEqual(facture.montant_ttc, 1800.00)
 
     def test_encaissement_and_invoice_status(self):
         """Vérifie que l'enregistrement d'encaissements met à jour le statut de la facture."""

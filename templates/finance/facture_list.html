@@ -4,50 +4,213 @@
 {% block title %}{% trans "Facturation Clients" %}{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<style>
+    /* Styling to match legacy layout with modern web details */
+    .filter-panel {
+        background-color: #d2e4f7;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #b8d4f0;
+    }
+    .filter-title {
+        font-weight: 800;
+        text-transform: uppercase;
+        font-style: italic;
+        color: #1e3a5f;
+        font-size: 1.1rem;
+        border-bottom: 2px solid #1e3a5f;
+        padding-bottom: 4px;
+    }
+    .action-btn-group .btn {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    .legacy-table-header {
+        background-color: #0078d4 !important;
+        color: white !important;
+    }
+    .table-responsive {
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .bottom-panel-card {
+        background-color: #f0f7ff;
+        border: 1px solid #cce3fd;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .bottom-panel-header {
+        background-color: #dbeaff;
+        font-weight: bold;
+        color: #1e3d6b;
+        border-bottom: 1px solid #cce3fd;
+    }
+    .btn-legacy-icon {
+        border: none;
+        background: transparent;
+        font-size: 1.5rem;
+        padding: 4px;
+        color: #2c3e50;
+        transition: transform 0.2s;
+    }
+    .btn-legacy-icon:hover {
+        transform: scale(1.15);
+    }
+    .table-container-title {
+        background-color: #9eccf5;
+        color: #1a3c63;
+        font-weight: 700;
+        text-align: center;
+        padding: 6px;
+        font-size: 1.2rem;
+        letter-spacing: 1px;
+    }
+    .filter-checkbox-group {
+        background-color: #dbeaff;
+        border: 1px solid #b3d7ff;
+        border-radius: 6px;
+        padding: 10px;
+    }
+</style>
+
+<div class="page-header mb-3">
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1 class="page-title">
+            <h1 class="page-title text-dark">
                 <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>
-                {% trans "Factures Clients" %}
+                {% trans "Service Administratif — Facturation et Comptabilité" %}
             </h1>
-            <p class="page-subtitle">{% trans "Suivi de la facturation, des encaissements et du recouvrement des créances" %}</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'finance:facture_reception_list' %}" class="btn btn-outline-primary">
-                <i class="fa-solid fa-receipt me-1"></i>
-                {% trans "Facturer Réceptions" %}
-            </a>
-            <a href="{% url 'finance:facture_create' %}" class="btn btn-primary shadow-sm">
-                <i class="fa-solid fa-plus-circle me-1"></i>
-                {% trans "Nouvelle Facture" %}
-            </a>
         </div>
     </div>
 </div>
 
-<!-- Table Principale des Factures -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 text-dark fw-bold">
-            <i class="fa-solid fa-list text-muted me-2"></i>{% trans "Table des factures" %}
-        </h5>
+<!-- Zone de Filtres (Image 1 top part) -->
+<div class="filter-panel shadow-sm">
+    <div class="row align-items-center mb-3">
+        <div class="col-md-2">
+            <div class="filter-title">{% trans "Facturation" %}</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-center gap-2">
+            <!-- Legacy Action Icons -->
+            <a href="{% url 'finance:facture_create' %}" class="btn-legacy-icon" title="{% trans 'Nouvelle Facture' %}">
+                <i class="fa-solid fa-circle-plus text-success"></i>
+            </a>
+            <button id="editLegacyBtn" class="btn-legacy-icon" title="{% trans 'Modifier Facture Sélectionnée' %}">
+                <i class="fa-solid fa-pen-to-square text-primary"></i>
+            </button>
+            <button id="deleteLegacyBtn" class="btn-legacy-icon" title="{% trans 'Annuler/Supprimer Facture' %}">
+                <i class="fa-solid fa-trash-can text-danger"></i>
+            </button>
+            <a href="{% url 'finance:facture_reception_list' %}" class="btn-legacy-icon" title="{% trans 'Facturer les réceptions' %}">
+                <i class="fa-solid fa-receipt text-warning"></i>
+            </a>
+        </div>
+        <div class="col-md-6 text-end">
+            <!-- Exports/Prints Group -->
+            <div class="d-inline-flex gap-2">
+                <button onclick="window.print()" class="btn btn-sm btn-light border">
+                    <i class="fa-solid fa-print me-1 text-secondary"></i>{% trans "Imprimer le tableau" %}
+                </button>
+                <a href="{% url 'finance:export_ventes' %}" class="btn btn-sm btn-light border">
+                    <i class="fa-solid fa-file-csv me-1 text-success"></i>{% trans "Exporter la facturation" %}
+                </a>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
+
+    <!-- Inputs Row 1 -->
+    <div class="row g-2 mb-2">
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "Factures du" %}</label>
+            <div class="input-group input-group-sm">
+                <input type="date" id="filterDateStart" class="form-control" value="2026-01-01">
+                <span class="input-group-text">{% trans "Au" %}</span>
+                <input type="date" id="filterDateEnd" class="form-control" value="2026-12-31">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "Etat de Règlement" %}</label>
+            <input type="text" id="filterEtatReglementText" class="form-control form-control-sm" placeholder="R / N / A">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "Type de Facture" %}</label>
+            <div class="d-flex align-items-center gap-3 pt-1">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="filterTypeReg" id="typeEnCours" value="EN_COURS" checked>
+                    <label class="form-check-label small fw-semibold" for="typeEnCours">{% trans "En cours" %}</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="filterTypeReg" id="typeAnnule" value="ANNULE">
+                    <label class="form-check-label small fw-semibold" for="typeAnnule">{% trans "Annulé" %}</label>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "Montant >=" %}</label>
+            <input type="number" id="filterMontantMin" class="form-control form-control-sm text-end" value="0.00" step="100">
+        </div>
+    </div>
+
+    <!-- Inputs Row 2 -->
+    <div class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "Client" %}</label>
+            <select id="filterClient" class="form-select form-select-sm">
+                <option value="">{% trans "Tous" %}</option>
+                {% for f in factures %}
+                <option value="{{ f.client.nom }}">{{ f.client.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "BC" %}</label>
+            <input type="text" id="filterBc" class="form-control form-control-sm" placeholder="{% trans 'Recherche BC...' %}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "N° Facture" %}</label>
+            <input type="text" id="filterNFacture" class="form-control form-control-sm" placeholder="FAC-...">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "N° Dossier" %}</label>
+            <input type="text" id="filterNDossier" class="form-control form-control-sm" placeholder="DOS-...">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">{% trans "Type client" %}</label>
+            <select id="filterTypeClient" class="form-select form-select-sm">
+                <option value="">{% trans "Tous" %}</option>
+                <option value="PUBLIC">{% trans "Public" %}</option>
+                <option value="PRIVE">{% trans "Privé" %}</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Table Header Decorator (Image 1 table title) -->
+<div class="table-container-title shadow-sm">
+    {% trans "Table des factures" %}
+</div>
+
+<!-- Table Principale -->
+<div class="card shadow-sm border-0 mb-4 rounded-0">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle w-100" id="facturesTable" style="cursor: pointer;">
+            <table class="table table-hover align-middle w-100 mb-0" id="facturesTable" style="cursor: pointer;">
                 <thead>
                     <tr>
-                        <th>{% trans "N° Facture" %}</th>
-                        <th>{% trans "Client" %}</th>
-                        <th>{% trans "Date Facture" %}</th>
-                        <th>{% trans "Total TTC" %}</th>
-                        <th>{% trans "Total Encaissé" %}</th>
-                        <th>{% trans "Solde" %}</th>
-                        <th>{% trans "Échéance" %}</th>
-                        <th>{% trans "Jours Retard" %}</th>
-                        <th>{% trans "Statut" %}</th>
-                        <th class="text-end" style="width: 150px;">{% trans "Actions" %}</th>
+                        <th class="legacy-table-header">{% trans "N° facture" %}</th>
+                        <th class="legacy-table-header">{% trans "Dossier" %}</th>
+                        <th class="legacy-table-header">{% trans "BC" %}</th>
+                        <th class="legacy-table-header">{% trans "Date facture" %}</th>
+                        <th class="legacy-table-header">{% trans "Clients" %}</th>
+                        <th class="legacy-table-header text-end">{% trans "Total TTC" %}</th>
+                        <th class="legacy-table-header text-end">{% trans "Total encaissement" %}</th>
+                        <th class="legacy-table-header text-end">{% trans "Solde" %}</th>
+                        <th class="legacy-table-header">{% trans "Date d'échéance" %}</th>
+                        <th class="legacy-table-header text-center">{% trans "NBJ" %}</th>
+                        <th class="legacy-table-header text-center">{% trans "Envoyée" %}</th>
+                        <th class="legacy-table-header text-center">{% trans "Accusée" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,61 +218,53 @@
                     <tr class="facture-row {% if forloop.first %}table-active{% endif %}"
                         data-id="{{ f.id }}"
                         data-reference="{{ f.reference }}"
+                        data-dossier="{{ f.dossier.reference|default:'—' }}"
+                        data-bc="{{ f.bc|default:'—' }}"
                         data-envoye="{% if f.envoye %}Oui{% else %}Non{% endif %}"
-                        data-envoye-par="{{ f.envoye_par.nom_complet|default:'—' }}"
+                        data-envoye-par="{{ f.envoye_par.first_name }} {{ f.envoye_par.last_name }}"
                         data-date-envoi="{{ f.date_envoi|date:'d/m/Y'|default:'—' }}"
                         data-accuse="{% if f.accuse %}Oui{% else %}Non{% endif %}"
                         data-date-accuse="{{ f.date_accuse|date:'d/m/Y'|default:'—' }}"
-                        data-reglement="{% if f.reglement_recu %}Oui{% else %}Non{% endif %}"
-                        data-date-reglement="{{ f.date_reglement|date:'d/m/Y'|default:'—' }}"
+                        data-reglement="{% if f.solde <= 0 %}Oui{% else %}Non{% endif %}"
+                        data-date-reglement="{{ f.date_facture|date:'d/m/Y' }}"
                         data-statut="{{ f.statut }}"
                         data-validee="{% if f.validee_par_signature %}true{% else %}false{% endif %}"
                         data-difficulte="{{ f.difficulte_recouvrement }}"
+                        data-type-client="{{ f.client.type_client }}"
+                        data-client-nom="{{ f.client.nom }}"
+                        data-montant-ttc="{{ f.montant_ttc }}"
+                        data-solde="{{ f.solde }}"
                         data-sign-url="{% url 'finance:facture_sign' f.id %}"
                         data-recouvrement-url="{% url 'finance:facture_update_recouvrement' f.id %}">
                         <td class="fw-bold text-primary">{{ f.reference }}</td>
-                        <td class="fw-semibold text-dark">{{ f.client.nom }}</td>
+                        <td class="fw-semibold">{{ f.dossier.reference|default:"—" }}</td>
+                        <td>{{ f.bc|default:"—" }}</td>
                         <td>{{ f.date_facture|date:"d/m/Y" }}</td>
-                        <td class="fw-bold">{{ f.montant_ttc }} DH</td>
-                        <td class="text-success">{{ f.total_encaissements }} DH</td>
-                        <td class="text-danger fw-semibold">{{ f.solde }} DH</td>
+                        <td class="fw-semibold text-dark">{{ f.client.nom }}</td>
+                        <td class="text-end fw-bold">{{ f.montant_ttc }} DH</td>
+                        <td class="text-end text-success">{{ f.total_encaissements }} DH</td>
+                        <td class="text-end text-danger fw-bold">{{ f.solde }} DH</td>
                         <td>{{ f.date_echeance|date:"d/m/Y" }}</td>
-                        <td>
+                        <td class="text-center">
                             {% if f.nombre_jours_retard > 0 %}
-                            <span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ f.nombre_jours_retard }} j</span>
+                            <span class="badge bg-danger">{{ f.nombre_jours_retard }}</span>
                             {% else %}
                             <span class="text-muted">—</span>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if f.statut == 'BROUILLON' %}
-                            <span class="badge bg-secondary">{% trans "Brouillon" %}</span>
-                            {% elif f.statut == 'VALIDEE' %}
-                            <span class="badge bg-primary">{% trans "Validée" %}</span>
-                            {% elif f.statut == 'PAYEE_PARTIEL' %}
-                            <span class="badge bg-warning text-dark">{% trans "Partielle" %}</span>
-                            {% elif f.statut == 'PAYEE' %}
-                            <span class="badge bg-success">{% trans "Payée" %}</span>
+                        <td class="text-center">
+                            {% if f.envoye %}
+                            <i class="fa-solid fa-circle-check text-success"></i>
                             {% else %}
-                            <span class="badge bg-danger">{% trans "Annulée" %}</span>
+                            <i class="fa-solid fa-circle-xmark text-muted"></i>
                             {% endif %}
                         </td>
-                        <td class="text-end" onclick="event.stopPropagation();">
-                            <div class="d-inline-flex gap-1">
-                                <a href="{% url 'finance:facture_detail' f.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Détails' %}">
-                                    <i class="fa-solid fa-eye text-secondary"></i>
-                                </a>
-                                {% if f.statut == 'BROUILLON' %}
-                                <a href="{% url 'finance:facture_update' f.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
-                                    <i class="fa-solid fa-pencil text-primary"></i>
-                                </a>
-                                {% endif %}
-                                {% if f.statut != 'PAYEE' and f.statut != 'ANNULEE' and f.validee_par_signature %}
-                                <a href="{% url 'finance:encaissement_create' %}?facture={{ f.id }}" class="btn btn-sm btn-icon" title="{% trans 'Enregistrer un encaissement' %}">
-                                    <i class="fa-solid fa-wallet text-success"></i>
-                                </a>
-                                {% endif %}
-                            </div>
+                        <td class="text-center">
+                            {% if f.accuse %}
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                            {% else %}
+                            <i class="fa-solid fa-circle-xmark text-muted"></i>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -119,41 +274,64 @@
     </div>
 </div>
 
-<!-- Section Inférieure : Détails de Suivi d'Envoi & Zone de Recouvrement -->
+<!-- Section Inférieure (Image 1 Bottom Panel) -->
 <div class="row">
-    <!-- Table des détails (Logistique / Envoi) -->
-    <div class="col-lg-7 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-dark fw-bold">
-                    <i class="fa-solid fa-truck-ramp-box text-muted me-2"></i>{% trans "Table des détails de suivi d'envoi" %}
-                </h5>
+    <!-- Panel 1: Mode d'envoi & Historique (Left & Center) -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 bottom-panel-card h-100">
+            <div class="card-header bottom-panel-header">
+                <i class="fa-solid fa-share-nodes me-2"></i>{% trans "Sélection mode envoi situation & détails d'envoi" %}
             </div>
             <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold">{% trans "Sélection mode envoi situation" %}</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sendMode" id="sendEmail" value="Email" checked>
+                                <label class="form-check-label small" for="sendEmail">{% trans "Email" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sendMode" id="sendWhatsApp" value="WhatsApp">
+                                <label class="form-check-label small" for="sendWhatsApp">{% trans "WhatsApp" %}</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control form-control-sm mt-2" placeholder="Email ou Tel">
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label small fw-bold">{% trans "Signer et valider la facture" %}</label>
+                        <div id="signatureBlock">
+                            <form method="post" id="signForm" action="">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-warning w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                    <i class="fa-solid fa-fingerprint"></i>
+                                    <span>{% trans "SIGNER LA FACTURE (OFFICIEL)" %}</span>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="alert alert-success py-2 px-3 d-none mb-0" id="signedAlert">
+                            <i class="fa-solid fa-circle-check me-2"></i>{% trans "Cette facture est signée et verrouillée." %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tableau de suivi d'envoi -->
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle">
+                    <table class="table table-sm table-bordered align-middle bg-white mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>{% trans "Étape / Statut" %}</th>
-                                <th>{% trans "État" %}</th>
-                                <th>{% trans "Opérateur / Date" %}</th>
+                                <th>{% trans "Envoyé par" %}</th>
+                                <th>{% trans "Date envoi" %}</th>
+                                <th>{% trans "Date accusé" %}</th>
+                                <th>{% trans "Date règlement" %}</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="fw-bold">{% trans "Facture Envoyée" %}</td>
-                                <td id="detailEnvoye">Non</td>
-                                <td id="detailEnvoyeInfos">—</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">{% trans "Accusé Réception Client" %}</td>
-                                <td id="detailAccuse">Non</td>
-                                <td id="detailAccuseInfos">—</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">{% trans "Règlement Validé" %}</td>
-                                <td id="detailReglement">Non</td>
-                                <td id="detailReglementInfos">—</td>
+                                <td id="detailEnvoyePar">—</td>
+                                <td id="detailDateEnvoi">—</td>
+                                <td id="detailDateAccuse">—</td>
+                                <td id="detailDateReglement">—</td>
                             </tr>
                         </tbody>
                     </table>
@@ -162,47 +340,113 @@
         </div>
     </div>
 
-    <!-- Zone de Recouvrement & Signature -->
-    <div class="col-lg-5 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-dark fw-bold">
-                    <i class="fa-solid fa-shield-halved text-muted me-2"></i>{% trans "Zone de validation & recouvrement" %}
-                </h5>
+    <!-- Panel 2: Quick Filter Options & Recouvrement (Right) -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bottom-panel-card h-100">
+            <div class="card-header bottom-panel-header d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-filter me-2"></i>{% trans "Filtres avancés & Recouvrement" %}</span>
+                <button id="refreshFiltersBtn" class="btn btn-xs btn-primary py-0 px-2" title="{% trans 'Rafraîchir les filtres' %}">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
             </div>
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
-                    <!-- En-tête de la facture sélectionnée -->
-                    <h6 class="text-muted uppercase small mb-3">{% trans "Facture sélectionnée :" %} <strong class="text-dark" id="recouvFactureRef">—</strong></h6>
-                    
-                    <!-- Bouton Signature officielle -->
-                    <div class="mb-4" id="signatureBlock">
-                        <form method="post" id="signForm" action="">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-warning w-100 py-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
-                                <i class="fa-solid fa-fingerprint fa-lg"></i>
-                                <span>{% trans "SIGNER LA FACTURE (OFFICIEL)" %}</span>
-                            </button>
-                        </form>
-                    </div>
-                    <div class="alert alert-success d-none" id="signedAlert">
-                        <i class="fa-solid fa-circle-check me-2"></i>{% trans "Cette facture est signée et verrouillée." %}
+            <div class="card-body">
+                <!-- Group 1: Règlement -->
+                <div class="filter-checkbox-group mb-2">
+                    <div class="fw-bold small mb-1 text-primary">{% trans "Règlement" %}</div>
+                    <div class="d-flex flex-column gap-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regTous" value="ALL" checked>
+                            <label class="form-check-label small" for="regTous">{% trans "Tous" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regNonSolde" value="NON_SOLDE">
+                            <label class="form-check-label small" for="regNonSolde">{% trans "Non soldé" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regSolde" value="SOLDE">
+                            <label class="form-check-label small" for="regSolde">{% trans "Soldé" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterReg" id="regEnInstance" value="BROUILLON">
+                            <label class="form-check-label small" for="regEnInstance">{% trans "En instance" %}</label>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Difficulté de recouvrement -->
-                <div class="border-top pt-3">
+                <!-- Group 2: Envoi -->
+                <div class="filter-checkbox-group mb-2">
+                    <div class="fw-bold small mb-1 text-primary">{% trans "Envoi" %}</div>
+                    <div class="d-flex flex-column gap-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterEnv" id="envTous" value="ALL" checked>
+                            <label class="form-check-label small" for="envTous">{% trans "Tous" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterEnv" id="envNonEnv" value="NON_ENVOYE">
+                            <label class="form-check-label small" for="envNonEnv">{% trans "Non Envoyée" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterEnv" id="envEnv" value="ENVOYE">
+                            <label class="form-check-label small" for="envEnv">{% trans "Envoyée" %}</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group 3: Accusé -->
+                <div class="filter-checkbox-group mb-2">
+                    <div class="fw-bold small mb-1 text-primary">{% trans "Accusé" %}</div>
+                    <div class="d-flex flex-column gap-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterAcc" id="accTous" value="ALL" checked>
+                            <label class="form-check-label small" for="accTous">{% trans "Tous" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterAcc" id="accNonAcc" value="NON_ACCUSE">
+                            <label class="form-check-label small" for="accNonAcc">{% trans "Non accusée" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterAcc" id="accAcc" value="ACCUSE">
+                            <label class="form-check-label small" for="accAcc">{% trans "Accusée" %}</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group 4: Recouvrement -->
+                <div class="filter-checkbox-group mb-2">
+                    <div class="fw-bold small mb-1 text-primary">{% trans "Recouvrement" %}</div>
+                    <div class="d-flex flex-column gap-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recTous" value="ALL" checked>
+                            <label class="form-check-label small" for="recTous">{% trans "Tous" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recRec" value="RECOUVRABLE">
+                            <label class="form-check-label small" for="recRec">{% trans "Recouvrable" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recDiff" value="DIFFICILE">
+                            <label class="form-check-label small" for="recDiff">{% trans "Difficile" %}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bottomFilterRec" id="recNonRec" value="NON_RECOUVRABLE">
+                            <label class="form-check-label small" for="recNonRec">{% trans "Non Recouvrable" %}</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAJ Action -->
+                <div class="mt-3">
                     <form method="post" id="recouvrementForm" action="">
                         {% csrf_token %}
-                        <label for="difficulteSelect" class="form-label fw-semibold">{% trans "Difficulté de Recouvrement" %}</label>
-                        <div class="input-group">
-                            <select name="difficulte" id="difficulteSelect" class="form-select">
+                        <div class="input-group input-group-sm">
+                            <select name="difficulte" id="difficulteSelect" class="form-select form-select-sm">
                                 <option value="RECOUVRABLE">{% trans "Recouvrable" %}</option>
                                 <option value="DIFFICILE">{% trans "Difficile" %}</option>
                                 <option value="NON_RECOUVRABLE">{% trans "Non Recouvrable" %}</option>
                             </select>
-                            <button type="submit" class="btn btn-outline-primary">
-                                <i class="fa-solid fa-rotate me-1"></i>{% trans "MAJ" %}
+                            <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                <span>{% trans "MAJ Recouvrement" %}</span>
                             </button>
                         </div>
                     </form>
@@ -221,19 +465,162 @@
             language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
             },
-            pageLength: 10,
-            order: [[2, 'desc']],
+            pageLength: 15,
+            order: [[0, 'desc']],
             columnDefs: [
-                { orderable: false, targets: 9 }
+                { orderable: false, targets: [10, 11] }
             ],
-            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
-                 "<'row'<'col-sm-12'tr>>" +
-                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+            dom: "t<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
         });
 
-        // Fonction pour charger les détails de la facture sélectionnée
-        function updateDetails(row) {
-            const ref = row.data('reference');
+        // Variables de stockage de la ligne active
+        let activeRowId = null;
+
+        // Custom search function to support all filters client-side (Image 1 filters)
+        $.fn.dataTable.ext.search.push(
+            function(settings, data, dataIndex) {
+                const row = $(table.row(dataIndex).node());
+                
+                // 1. Date filter range
+                const dateVal = row.find('td:eq(3)').text().trim(); // dd/mm/yyyy
+                if (dateVal) {
+                    const parts = dateVal.split('/');
+                    const rowDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                    
+                    const startVal = $('#filterDateStart').val();
+                    const endVal = $('#filterDateEnd').val();
+                    
+                    if (startVal) {
+                        const startDate = new Date(startVal);
+                        if (rowDate < startDate) return false;
+                    }
+                    if (endVal) {
+                        const endDate = new Date(endVal);
+                        if (rowDate > endDate) return false;
+                    }
+                }
+
+                // 2. Client dropdown filter
+                const clientVal = $('#filterClient').val();
+                if (clientVal && row.data('client-nom') !== clientVal) {
+                    return false;
+                }
+
+                // 3. BC filter
+                const bcVal = $('#filterBc').val().toLowerCase();
+                if (bcVal && !row.data('bc').toLowerCase().includes(bcVal)) {
+                    return false;
+                }
+
+                // 4. N° Facture filter
+                const facVal = $('#filterNFacture').val().toLowerCase();
+                if (facVal && !row.data('reference').toLowerCase().includes(facVal)) {
+                    return false;
+                }
+
+                // 5. N° Dossier filter
+                const dosVal = $('#filterNDossier').val().toLowerCase();
+                if (dosVal && !row.data('dossier').toLowerCase().includes(dosVal)) {
+                    return false;
+                }
+
+                // 6. Type client filter
+                const typeClientVal = $('#filterTypeClient').val();
+                if (typeClientVal && row.data('type-client') !== typeClientVal) {
+                    return false;
+                }
+
+                // 7. Radio button: En cours / Annulé
+                const typeReg = $('input[name="filterTypeReg"]:checked').val();
+                const status = row.data('statut');
+                if (typeReg === 'EN_COURS' && status === 'ANNULEE') {
+                    return false;
+                }
+                if (typeReg === 'ANNULE' && status !== 'ANNULEE') {
+                    return false;
+                }
+
+                // 8. Montant >= filter
+                const montantMin = parseFloat($('#filterMontantMin').val() || 0);
+                const rowMontant = parseFloat(row.data('montant-ttc') || 0);
+                if (rowMontant < montantMin) {
+                    return false;
+                }
+
+                // 9. Etat de règlement filter text (R / N / A)
+                const etatRegText = $('#filterEtatReglementText').val().toUpperCase();
+                if (etatRegText) {
+                    const isPaid = row.data('solde') <= 0;
+                    const isCanceled = status === 'ANNULEE';
+                    if (etatRegText === 'R' && (!isPaid || isCanceled)) return false;
+                    if (etatRegText === 'N' && (isPaid || isCanceled)) return false;
+                    if (etatRegText === 'A' && !isCanceled) return false;
+                }
+
+                // --- Bottom panel quick filters ---
+                // Group 1: Règlement (Tous / Non soldé / Soldé / En instance)
+                const bottomReg = $('input[name="bottomFilterReg"]:checked').val();
+                const solde = parseFloat(row.data('solde') || 0);
+                if (bottomReg === 'NON_SOLDE' && (solde <= 0 || status === 'ANNULEE')) return false;
+                if (bottomReg === 'SOLDE' && (solde > 0 || status === 'ANNULEE')) return false;
+                if (bottomReg === 'BROUILLON' && status !== 'BROUILLON') return false;
+
+                // Group 2: Envoi (Tous / Non Envoyée / Envoyée)
+                const bottomEnv = $('input[name="bottomFilterEnv"]:checked').val();
+                const isEnv = row.data('envoye') === 'Oui';
+                if (bottomEnv === 'NON_ENVOYE' && isEnv) return false;
+                if (bottomEnv === 'ENVOYE' && !isEnv) return false;
+
+                // Group 3: Accusé (Tous / Non accusée / Accusée)
+                const bottomAcc = $('input[name="bottomFilterAcc"]:checked').val();
+                const isAcc = row.data('accuse') === 'Oui';
+                if (bottomAcc === 'NON_ACCUSE' && isAcc) return false;
+                if (bottomAcc === 'ACCUSE' && !isAcc) return false;
+
+                // Group 4: Recouvrement (Tous / Recouvrable / Difficile / Non Recouvrable)
+                const bottomRec = $('input[name="bottomFilterRec"]:checked').val();
+                const difficulte = row.data('difficulte');
+                if (bottomRec !== 'ALL' && difficulte !== bottomRec) return false;
+
+                return true;
+            }
+        );
+
+        // Apply filters on keyup/change
+        $('.filter-panel input, .filter-panel select, input[name="sendMode"]').on('keyup change click', function() {
+            table.draw();
+        });
+
+        $('input[name^="bottomFilter"]').on('change', function() {
+            table.draw();
+        });
+
+        $('#refreshFiltersBtn').on('click', function() {
+            // Reset filters to defaults
+            $('#filterDateStart').val('2026-01-01');
+            $('#filterDateEnd').val('2026-12-31');
+            $('#filterEtatReglementText').val('');
+            $('#typeEnCours').prop('checked', true);
+            $('#filterMontantMin').val('0.00');
+            $('#filterClient').val('');
+            $('#filterBc').val('');
+            $('#filterNFacture').val('');
+            $('#filterNDossier').val('');
+            $('#filterTypeClient').val('');
+            
+            $('input[name^="bottomFilter"]').each(function() {
+                if ($(this).val() === 'ALL' || $(this).val() === 'ALL') {
+                    $(this).prop('checked', true);
+                }
+            });
+            table.draw();
+        });
+
+        // Load details for selected row
+        function showDetails(row) {
+            const id = row.data('id');
+            activeRowId = id;
+            
             const envoye = row.data('envoye');
             const envoyePar = row.data('envoye-par');
             const dateEnvoi = row.data('date-envoi');
@@ -246,22 +633,16 @@
             const signUrl = row.data('sign-url');
             const recUrl = row.data('recouvrement-url');
 
-            // Mettre à jour la logistique
-            $('#detailEnvoye').html(envoye === 'Oui' ? '<span class="badge bg-success">Oui</span>' : '<span class="badge bg-secondary">Non</span>');
-            $('#detailEnvoyeInfos').text(envoye === 'Oui' ? `${envoyePar} le ${dateEnvoi}` : '—');
-            
-            $('#detailAccuse').html(accuse === 'Oui' ? '<span class="badge bg-success">Oui</span>' : '<span class="badge bg-secondary">Non</span>');
-            $('#detailAccuseInfos').text(accuse === 'Oui' ? `Reçu le ${dateAccuse}` : '—');
+            // Render bottom detail grid
+            $('#detailEnvoyePar').text(envoye === 'Oui' ? envoyePar : '—');
+            $('#detailDateEnvoi').text(envoye === 'Oui' ? dateEnvoi : '—');
+            $('#detailDateAccuse').text(accuse === 'Oui' ? dateAccuse : '—');
+            $('#detailDateReglement').text(reglement === 'Oui' ? dateReglement : '—');
 
-            $('#detailReglement').html(reglement === 'Oui' ? '<span class="badge bg-success">Oui</span>' : '<span class="badge bg-secondary">Non</span>');
-            $('#detailReglementInfos').text(reglement === 'Oui' ? `Validé le ${dateReglement}` : '—');
-
-            // Mettre à jour la zone de recouvrement
-            $('#recouvFactureRef').text(ref);
+            // Update forms
             $('#difficulteSelect').val(difficulte);
             $('#recouvrementForm').attr('action', recUrl);
 
-            // Gérer le bouton de signature
             if (validee === true) {
                 $('#signatureBlock').addClass('d-none');
                 $('#signedAlert').removeClass('d-none');
@@ -272,18 +653,53 @@
             }
         }
 
-        // Clic sur une ligne du tableau
+        // Clic on table rows
         $('#facturesTable tbody').on('click', 'tr', function() {
             $('.facture-row').removeClass('table-active');
             $(this).addClass('table-active');
-            updateDetails($(this));
+            showDetails($(this));
         });
 
-        // Initialiser avec la première ligne sélectionnée par défaut
-        const firstRow = $('.facture-row.table-active');
-        if (firstRow.length) {
-            updateDetails(firstRow);
+        // Initialize first row details
+        const initialActive = $('.facture-row.table-active');
+        if (initialActive.length) {
+            showDetails(initialActive);
         }
+
+        // Navigation controls linking the action icons
+        $('#editLegacyBtn').on('click', function() {
+            if (activeRowId) {
+                window.location.href = `/facturation-comptabilite/factures/${activeRowId}/modifier/`;
+            } else {
+                alert("{% trans 'Veuillez sélectionner une facture dans le tableau.' %}");
+            }
+        });
+
+        $('#deleteLegacyBtn').on('click', function() {
+            if (activeRowId) {
+                if (confirm("{% trans 'Êtes-vous sûr de vouloir annuler cette facture ?' %}")) {
+                    // Create dynamic post submission to cancel view
+                    const form = $('<form>', {
+                        method: 'POST',
+                        action: `/facturation-comptabilite/factures/${activeRowId}/recouvrement/`
+                    });
+                    form.append($('<input>', {
+                        type: 'hidden',
+                        name: 'csrfmiddlewaretoken',
+                        value: '{{ csrf_token }}'
+                    }));
+                    form.append($('<input>', {
+                        type: 'hidden',
+                        name: 'difficulte',
+                        value: 'NON_RECOUVRABLE'
+                    }));
+                    $('body').append(form);
+                    form.submit();
+                }
+            } else {
+                alert("{% trans 'Veuillez sélectionner une facture.' %}");
+            }
+        });
     });
 </script>
 {% endblock %}
