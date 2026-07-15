@@ -14,7 +14,7 @@ from django.db.models import Sum, Q
 
 from apps.core.mixins import ModulePermissionMixin
 from apps.table_receptions.models import Reception
-from apps.commercial.models import Devis
+from apps.commercial.models import Client, Devis, Dossier
 from .models import (
     Fournisseur, Facture, LigneFacture, Encaissement,
     FactureFournisseur, Paiement, MouvementCaisse, Recouvrement
@@ -90,6 +90,8 @@ class FactureListView(ModulePermissionMixin, ListView):
             selected_facture = context['factures'].first()
             
         context['selected_facture'] = selected_facture
+        context['all_clients'] = Client.objects.all().order_by('nom')
+        context['all_dossiers'] = Dossier.objects.all().order_by('reference')
         return context
 
 
@@ -168,6 +170,19 @@ class FactureUpdateRecouvrementView(ModulePermissionMixin, View):
             facture.difficulte_recouvrement = difficulte
             facture.save()
             messages.success(request, _("Le statut de recouvrement de la facture a été mis à jour."))
+        return redirect('finance:facture_list')
+
+
+class FactureCancelView(ModulePermissionMixin, View):
+    """Annulation de la facture."""
+    module_name = 'finance'
+    action_name = 'change'
+
+    def post(self, request, pk, *args, **kwargs):
+        facture = get_object_or_404(Facture, pk=pk)
+        facture.statut = Facture.StatutFacture.ANNULEE
+        facture.save()
+        messages.warning(request, _(f"La facture {facture.reference} a été annulée."))
         return redirect('finance:facture_list')
 
 
