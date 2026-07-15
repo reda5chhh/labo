@@ -15,6 +15,19 @@
             <h1 class="page-title">
                 <i class="fa-solid fa-gauge-high text-primary me-2"></i>
                 {% trans "Tableau de Bord" %}
+                <span class="fs-5 text-muted ms-2">
+                    (
+                    {% if request.session.selected_service == 'service_administratif' %}{% trans "Service Administratif" %}
+                    {% elif request.session.selected_service == 'service_technique' %}{% trans "Service Technique" %}
+                    {% elif request.session.selected_service == 'service_qualite' %}{% trans "Service Qualité" %}
+                    {% elif request.session.selected_service == 'service_metrologie' %}{% trans "Métrologie & Matériel" %}
+                    {% elif request.session.selected_service == 'espace_user' %}{% trans "Espace Utilisateur" %}
+                    {% elif request.session.selected_service == 'ged_archive' %}{% trans "GED Archive" %}
+                    {% elif request.session.selected_service == 'service_informatique' %}{% trans "Service Informatique" %}
+                    {% elif request.session.selected_service == 'parametrage' %}{% trans "Paramétrage" %}
+                    {% endif %}
+                    )
+                </span>
             </h1>
             <p class="page-subtitle">
                 {% trans "Bienvenue," %} <strong>{{ user.nom_complet }}</strong> —
@@ -30,80 +43,399 @@
     </div>
 </div>
 
-<!-- ── CARTES DE STATISTIQUES ── -->
+<!-- ── CARTES DE STATISTIQUES PERSONNALISÉES ── -->
 <div class="row g-4 mb-4">
 
-    <!-- Dossiers en cours -->
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-card--blue">
-            <div class="stat-card-icon">
-                <i class="fa-solid fa-folder-open"></i>
-            </div>
-            <div class="stat-card-body">
-                <div class="stat-card-value">{{ stats.nb_dossiers|intcomma }}</div>
-                <div class="stat-card-label">{% trans "Dossiers en cours" %}</div>
-            </div>
-            <div class="stat-card-footer">
-                <a href="#" class="stretched-link">
-                    {% trans "Voir les dossiers" %} <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
+    {% if request.session.selected_service == 'service_administratif' %}
+        <!-- Dossiers en cours -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-folder-open"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_dossiers|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Dossiers en cours" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="{% url 'commercial:dossier_list' %}" class="stretched-link">
+                        {% trans "Voir les dossiers" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+        <!-- Devis en attente -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_devis_attente|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Devis en attente BC" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="{% url 'commercial:devis_list' %}" class="stretched-link">
+                        {% trans "Voir les devis" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Factures non soldées -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--red">
+                <div class="stat-card-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_factures_non_soldees|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Factures non soldées" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="{% url 'finance:facture_list' %}" class="stretched-link">
+                        {% trans "Voir les factures" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Clients Actifs -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--green">
+                <div class="stat-card-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">4</div>
+                    <div class="stat-card-label">{% trans "Clients Actifs" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="{% url 'commercial:client_list' %}" class="stretched-link">
+                        {% trans "Voir la liste" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
 
-    <!-- Devis en attente -->
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-card--orange">
-            <div class="stat-card-icon">
-                <i class="fa-solid fa-file-invoice"></i>
-            </div>
-            <div class="stat-card-body">
-                <div class="stat-card-value">{{ stats.nb_devis_attente|intcomma }}</div>
-                <div class="stat-card-label">{% trans "Devis en attente BC" %}</div>
-            </div>
-            <div class="stat-card-footer">
-                <a href="#" class="stretched-link">
-                    {% trans "Voir les devis" %} <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
+    {% elif request.session.selected_service == 'service_technique' %}
+        <!-- Réceptions en attente -->
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-vials"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_receptions_attente|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Réceptions en attente" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="{% url 'technique:reception_list' %}" class="stretched-link">
+                        {% trans "Traiter les réceptions" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+        <!-- Essais en cours -->
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--green">
+                <div class="stat-card-icon"><i class="fa-solid fa-flask-vial"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">12</div>
+                    <div class="stat-card-label">{% trans "Feuilles d'essais en cours" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Saisir des résultats" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Maintenance programmé -->
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">3</div>
+                    <div class="stat-card-label">{% trans "Maintenances programmées" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Planning de maintenance" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
 
-    <!-- Factures non soldées -->
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-card--red">
-            <div class="stat-card-icon">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-            </div>
-            <div class="stat-card-body">
-                <div class="stat-card-value">{{ stats.nb_factures_non_soldees|intcomma }}</div>
-                <div class="stat-card-label">{% trans "Factures non soldées" %}</div>
-            </div>
-            <div class="stat-card-footer">
-                <a href="#" class="stretched-link">
-                    {% trans "Voir les factures" %} <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
+    {% elif request.session.selected_service == 'service_qualite' %}
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-file-shield"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">145</div>
+                    <div class="stat-card-label">{% trans "Documents en vigueur" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Accéder à la liste" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-arrows-spin"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">4</div>
+                    <div class="stat-card-label">{% trans "Revues documentaires en attente" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Lancer la revue" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--red">
+                <div class="stat-card-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">8</div>
+                    <div class="stat-card-label">{% trans "Fiches de progrès actives" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Suivi fiches" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
 
-    <!-- Réceptions en attente -->
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-card--green">
-            <div class="stat-card-icon">
-                <i class="fa-solid fa-vials"></i>
-            </div>
-            <div class="stat-card-body">
-                <div class="stat-card-value">{{ stats.nb_receptions_attente|intcomma }}</div>
-                <div class="stat-card-label">{% trans "Réceptions en attente" %}</div>
-            </div>
-            <div class="stat-card-footer">
-                <a href="#" class="stretched-link">
-                    {% trans "Voir les réceptions" %} <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
+    {% elif request.session.selected_service == 'service_metrologie' %}
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-ruler-combined"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">84</div>
+                    <div class="stat-card-label">{% trans "Total Équipements" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Inventaire Matériel" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">5</div>
+                    <div class="stat-card-label">{% trans "Étalonnages à planifier" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Planning d'étalonnage" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--green">
+                <div class="stat-card-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">2</div>
+                    <div class="stat-card-label">{% trans "Interventions en cours" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Voir les interventions" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    {% elif request.session.selected_service == 'espace_user' %}
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">18 {% trans "jours" %}</div>
+                    <div class="stat-card-label">{% trans "Mon Solde de Congé" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Faire une demande" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--green">
+                <div class="stat-card-icon"><i class="fa-solid fa-file-signature"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">1</div>
+                    <div class="stat-card-label">{% trans "Demandes d'attestation en cours" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Suivi demandes" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-cart-flatbed"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">2</div>
+                    <div class="stat-card-label">{% trans "Mes Demandes d'Achat" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Suivi achats" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    {% elif request.session.selected_service == 'ged_archive' %}
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-box-archive"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">1,250</div>
+                    <div class="stat-card-label">{% trans "Documents Archivés" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Rechercher une archive" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--green">
+                <div class="stat-card-icon"><i class="fa-solid fa-share-nodes"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">18</div>
+                    <div class="stat-card-label">{% trans "Partages actifs" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Gérer les accès" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--dark">
+                <div class="stat-card-icon"><i class="fa-solid fa-hard-drive"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">1.4 Go</div>
+                    <div class="stat-card-label">{% trans "Espace utilisé" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <span style="color: rgba(255, 255, 255, 0.75);">{% trans "Quota" %} : 10 Go</span>
+                </div>
+            </div>
+        </div>
+
+    {% elif request.session.selected_service == 'service_informatique' %}
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-users-gears"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">4</div>
+                    <div class="stat-card-label">{% trans "Utilisateurs Actifs" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="/admin/core/user/" class="stretched-link">
+                        {% trans "Gérer les comptes" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">45</div>
+                    <div class="stat-card-label">{% trans "Modifications Système" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Consulter les modifications" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="stat-card stat-card--red">
+                <div class="stat-card-icon"><i class="fa-solid fa-list-check"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ activite_globale|length }}</div>
+                    <div class="stat-card-label">{% trans "Logs d'Audit récents" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Voir les logs" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- Fallback Default Stats -->
+        <!-- Dossiers en cours -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--blue">
+                <div class="stat-card-icon"><i class="fa-solid fa-folder-open"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_dossiers|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Dossiers en cours" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Voir les dossiers" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Devis en attente -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--orange">
+                <div class="stat-card-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_devis_attente|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Devis en attente BC" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Voir les devis" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Factures non soldées -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--red">
+                <div class="stat-card-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_factures_non_soldees|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Factures non soldées" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Voir les factures" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Réceptions en attente -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card stat-card--green">
+                <div class="stat-card-icon"><i class="fa-solid fa-vials"></i></div>
+                <div class="stat-card-body">
+                    <div class="stat-card-value">{{ stats.nb_receptions_attente|intcomma }}</div>
+                    <div class="stat-card-label">{% trans "Réceptions en attente" %}</div>
+                </div>
+                <div class="stat-card-footer">
+                    <a href="#" class="stretched-link">
+                        {% trans "Voir les réceptions" %} <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 
 </div>
 <!-- /STATISTIQUES -->
@@ -111,7 +443,7 @@
 <!-- ── RANGÉE PRINCIPALE ── -->
 <div class="row g-4">
 
-    <!-- Accès Rapides -->
+    <!-- Accès Rapides Personnalisés -->
     <div class="col-xl-4 col-lg-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header bg-transparent border-0 pb-0">
@@ -122,87 +454,264 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="#" class="btn btn-outline-primary btn-sm text-start">
-                        <i class="fa-solid fa-plus-circle me-2"></i>{% trans "Nouveau Devis" %}
-                    </a>
-                    <a href="#" class="btn btn-outline-success btn-sm text-start">
-                        <i class="fa-solid fa-folder-plus me-2"></i>{% trans "Nouveau Dossier" %}
-                    </a>
-                    <a href="#" class="btn btn-outline-info btn-sm text-start">
-                        <i class="fa-solid fa-flask me-2"></i>{% trans "Nouvelle Réception" %}
-                    </a>
-                    <a href="#" class="btn btn-outline-warning btn-sm text-start">
-                        <i class="fa-solid fa-file-invoice-dollar me-2"></i>{% trans "Nouvelle Facture" %}
-                    </a>
-                    <a href="#" class="btn btn-outline-secondary btn-sm text-start">
-                        <i class="fa-solid fa-upload me-2"></i>{% trans "Upload GED" %}
-                    </a>
+                    {% if request.session.selected_service == 'service_administratif' %}
+                        <a href="{% url 'commercial:devis_list' %}" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-plus-circle me-2"></i>{% trans "Nouveau Devis" %}
+                        </a>
+                        <a href="{% url 'commercial:dossier_list' %}" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-folder-plus me-2"></i>{% trans "Nouveau Dossier" %}
+                        </a>
+                        <a href="{% url 'finance:facture_list' %}" class="btn btn-outline-warning btn-sm text-start">
+                            <i class="fa-solid fa-file-invoice-dollar me-2"></i>{% trans "Nouvelle Facture" %}
+                        </a>
+                        <a href="{% url 'commercial:client_list' %}" class="btn btn-outline-info btn-sm text-start">
+                            <i class="fa-solid fa-user-plus me-2"></i>{% trans "Créer un Client" %}
+                        </a>
+                    {% elif request.session.selected_service == 'service_technique' %}
+                        <a href="{% url 'technique:reception_create' %}" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-plus-circle me-2"></i>{% trans "Nouvelle Réception" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-file-signature me-2"></i>{% trans "Saisir Feuille d'Essai" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-info btn-sm text-start">
+                            <i class="fa-solid fa-calendar-days me-2"></i>{% trans "Consulter le Planning" %}
+                        </a>
+                    {% elif request.session.selected_service == 'service_qualite' %}
+                        <a href="#" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-file-circle-plus me-2"></i>{% trans "Ajouter un Document" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-clipboard-question me-2"></i>{% trans "Créer Fiche de Progrès" %}
+                        </a>
+                    {% elif request.session.selected_service == 'service_metrologie' %}
+                        <a href="#" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-plus me-2"></i>{% trans "Enregistrer Matériel" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-wrench me-2"></i>{% trans "Saisir Intervention" %}
+                        </a>
+                    {% elif request.session.selected_service == 'espace_user' %}
+                        <a href="#" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-umbrella-beach me-2"></i>{% trans "Demander un Congé" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-file-invoice me-2"></i>{% trans "Demander une Attestation" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-warning btn-sm text-start">
+                            <i class="fa-solid fa-cart-shopping me-2"></i>{% trans "Demander un Achat" %}
+                        </a>
+                    {% elif request.session.selected_service == 'ged_archive' %}
+                        <a href="#" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-upload me-2"></i>{% trans "Téléverser un Fichier" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-magnifying-glass me-2"></i>{% trans "Rechercher Archive" %}
+                        </a>
+                    {% elif request.session.selected_service == 'service_informatique' %}
+                        <a href="/admin/core/user/add/" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-user-plus me-2"></i>{% trans "Créer un Utilisateur" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-shield-halved me-2"></i>{% trans "Consulter les Logs" %}
+                        </a>
+                    {% else %}
+                        <a href="#" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fa-solid fa-plus-circle me-2"></i>{% trans "Nouveau Devis" %}
+                        </a>
+                        <a href="#" class="btn btn-outline-success btn-sm text-start">
+                            <i class="fa-solid fa-folder-plus me-2"></i>{% trans "Nouveau Dossier" %}
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modules -->
+    <!-- Modules Personnalisés -->
     <div class="col-xl-4 col-lg-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header bg-transparent border-0 pb-0">
                 <h5 class="card-title mb-0">
                     <i class="fa-solid fa-th-large text-primary me-2"></i>
-                    {% trans "Modules" %}
+                    {% trans "Sous-Services" %}
                 </h5>
             </div>
             <div class="card-body">
                 <div class="row g-2">
-                    {% with modules=modules_list %}
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-briefcase"></i>
-                            <span>{% trans "Commercial" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-chart-line"></i>
-                            <span>{% trans "Finance" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-microscope"></i>
-                            <span>{% trans "Technique" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-ruler-combined"></i>
-                            <span>{% trans "Métrologie" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-certificate"></i>
-                            <span>{% trans "Qualité" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-users"></i>
-                            <span>{% trans "RH" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-folder-open"></i>
-                            <span>{% trans "GED" %}</span>
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="#" class="module-btn">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            <span>{% trans "Achats" %}</span>
-                        </a>
-                    </div>
-                    {% endwith %}
+                    {% if request.session.selected_service == 'service_administratif' %}
+                        <div class="col-6">
+                            <a href="{% url 'commercial:client_list' %}" class="module-btn">
+                                <i class="fa-solid fa-briefcase"></i><span>{% trans "Commercial" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'marches:ao_list' %}" class="module-btn">
+                                <i class="fa-solid fa-gavel"></i><span>{% trans "Marchés" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'finance:facture_list' %}" class="module-btn">
+                                <i class="fa-solid fa-chart-line"></i><span>{% trans "Comptabilité" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-cart-shopping"></i><span>{% trans "Achats" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-users"></i><span>{% trans "Ressources Humaines" %}</span>
+                            </a>
+                        </div>
+                    {% elif request.session.selected_service == 'service_technique' %}
+                        <div class="col-6">
+                            <a href="{% url 'technique:reception_list' %}" class="module-btn">
+                                <i class="fa-solid fa-vials"></i><span>{% trans "Réceptions" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-flask"></i><span>{% trans "Essais" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-calendar-days"></i><span>{% trans "Planning" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-screwdriver-wrench"></i><span>{% trans "Maintenance" %}</span>
+                            </a>
+                        </div>
+                    {% elif request.session.selected_service == 'service_qualite' %}
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-file-shield"></i><span>{% trans "Documents" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-clipboard-check"></i><span>{% trans "Fiches de progrès" %}</span>
+                            </a>
+                        </div>
+                    {% elif request.session.selected_service == 'service_metrologie' %}
+                        <!-- Matériel Section -->
+                        <div class="col-12 mt-2 mb-1">
+                            <span class="text-muted small fw-bold text-uppercase">{% trans "Matériel" %}</span>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'inventaire_materiel:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-boxes-stacked"></i><span>{% trans "Inventaire Matériel" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'fiche_vie:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-file-waveform"></i><span>{% trans "Fiche de vie" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'maj_mouvement_materiel:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-truck-ramp-box"></i><span>{% trans "Mouvement Matériel" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'plannings_metrologie:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-calendar-days"></i><span>{% trans "Plannings" %}</span>
+                            </a>
+                        </div>
+
+                        <!-- Métrologie Section -->
+                        <div class="col-12 mt-3 mb-1">
+                            <span class="text-muted small fw-bold text-uppercase">{% trans "Métrologie" %}</span>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'etalonnage_interne:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-compass-drafting"></i><span>{% trans "Étalonnage interne" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'maj_incertitude:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-chart-line"></i><span>{% trans "MAJ incertitude" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'maj_elements_etalonner:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-sliders"></i><span>{% trans "Éléments à étalonner" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'capabilite:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-percent"></i><span>{% trans "Capabilité" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'exploitation_metrologique:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-square-poll-vertical"></i><span>{% trans "Exploitation" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'verification_etuves:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-temperature-three-quarters"></i><span>{% trans "Vérification étuves" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'parametres_metrologie:dashboard' %}" class="module-btn">
+                                <i class="fa-solid fa-gears"></i><span>{% trans "Paramètres" %}</span>
+                            </a>
+                        </div>
+                    {% elif request.session.selected_service == 'espace_user' %}
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-umbrella-beach"></i><span>{% trans "Congé" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-file-invoice"></i><span>{% trans "Attestations" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-cart-shopping"></i><span>{% trans "Demandes Achat" %}</span>
+                            </a>
+                        </div>
+                    {% elif request.session.selected_service == 'ged_archive' %}
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-box-archive"></i><span>{% trans "Archive" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-folder-tree"></i><span>{% trans "Familles" %}</span>
+                            </a>
+                        </div>
+                    {% elif request.session.selected_service == 'service_informatique' %}
+                        <div class="col-6">
+                            <a href="/admin/" class="module-btn">
+                                <i class="fa-solid fa-lock"></i><span>{% trans "Droits d'Accès" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-history"></i><span>{% trans "Modifications" %}</span>
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-briefcase"></i><span>{% trans "Commercial" %}</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="module-btn">
+                                <i class="fa-solid fa-chart-line"></i><span>{% trans "Finance" %}</span>
+                            </a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

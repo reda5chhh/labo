@@ -14,41 +14,39 @@
     const sidebar = document.getElementById('sidebar');
 
     if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', function() {
-            document.body.classList.toggle('sidebar-collapsed');
-            // Persister l'état dans localStorage
-            const collapsed = document.body.classList.contains('sidebar-collapsed');
-            localStorage.setItem('labocsSidebarCollapsed', collapsed);
+        sidebarToggle.addEventListener('click', function(e) {
+            if (window.innerWidth >= 992) {
+                document.body.classList.toggle('sidebar-collapsed');
+                // Persister l'état dans localStorage
+                const collapsed = document.body.classList.contains('sidebar-collapsed');
+                localStorage.setItem('labocsSidebarCollapsed', collapsed);
 
-            // Fermer les sous-menus ouverts si la sidebar est repliée
-            if (collapsed) {
-                $('.sidebar-nav .collapse.show').each(function() {
-                    bootstrap.Collapse.getOrCreateInstance(this).hide();
-                });
+                // Fermer les sous-menus ouverts si la sidebar est repliée
+                if (collapsed) {
+                    $('.sidebar-nav .collapse.show').each(function() {
+                        bootstrap.Collapse.getOrCreateInstance(this).hide();
+                    });
+                }
+            } else {
+                e.stopPropagation();
+                document.body.classList.toggle('sidebar-open');
             }
         });
     }
 
-    // Restaurer l'état de la sidebar au chargement
-    if (localStorage.getItem('labocsSidebarCollapsed') === 'true') {
+    // Restaurer l'état de la sidebar au chargement (uniquement sur desktop)
+    if (window.innerWidth >= 992 && localStorage.getItem('labocsSidebarCollapsed') === 'true') {
         document.body.classList.add('sidebar-collapsed');
     }
 
     // Overlay mobile : fermer la sidebar si on clique en dehors
     document.addEventListener('click', function(e) {
         if (window.innerWidth < 992) {
-            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+            if (sidebar && !sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
                 document.body.classList.remove('sidebar-open');
             }
         }
     });
-
-    if (sidebarToggle && window.innerWidth < 992) {
-        sidebarToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            document.body.classList.toggle('sidebar-open');
-        });
-    }
 
     /* ============================================================
        2. HORLOGE TOPBAR

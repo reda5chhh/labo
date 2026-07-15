@@ -270,7 +270,9 @@ body.sidebar-collapsed .brand-sub,
 body.sidebar-collapsed .sidebar-nav .nav-link span,
 body.sidebar-collapsed .nav-section,
 body.sidebar-collapsed .nav-arrow,
-body.sidebar-collapsed .sidebar-footer {
+body.sidebar-collapsed .sidebar-footer,
+body.sidebar-collapsed .sidebar-service-widget,
+body.sidebar-collapsed .nav-sub {
     display: none !important;
 }
 body.sidebar-collapsed .brand-logo {
@@ -505,6 +507,10 @@ body.sidebar-collapsed .sidebar-nav .nav-link {
 .stat-card--green {
     background: linear-gradient(135deg, #059669, #10b981);
 }
+.stat-card--dark {
+    background: linear-gradient(135deg, #1e293b, #334155);
+}
+
 
 .stat-card::before {
     content: '';

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Marchés" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'marches:ao_list' %}">{% trans "Appels d'Offres & Cautions" %}</a></li>
+<li class="breadcrumb-item active">{% if object %}{% trans "Modification" %}{% else %}{% trans "Création" %}{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-gavel text-primary me-2"></i>
+        {{ titre }}
+    </h1>
+    <p class="page-subtitle">{% trans "Complétez les informations requises dans les champs ci-dessous" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            {% crispy form %}
+            
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer" %}
+                </button>
+                <a href="{% url 'marches:ao_list' %}{% if request.GET.tab %}?tab={{ request.GET.tab }}{% endif %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const aoSoumissionSelect = document.getElementById('id_ao_soumission');
+    const montantFinalInput = document.getElementById('id_montant_final');
+    const cautionMontantInput = document.getElementById('id_montant');
+
+    if (aoSoumissionSelect) {
+        aoSoumissionSelect.addEventListener('change', function() {
+            const aoId = this.value;
+            if (!aoId) return;
+
+            fetch(`/api/entity-info/ao/${aoId}/`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch AO data');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.montant_soumission) {
+                        if (montantFinalInput && !montantFinalInput.value) {
+                            montantFinalInput.value = data.montant_soumission;
+                        }
+                        if (cautionMontantInput && !cautionMontantInput.value) {
+                            cautionMontantInput.value = data.montant_soumission;
+                        }
+                    }
+                    if (data.client_id) {
+                        const clientSelect = document.getElementById('id_client');
+                        if (clientSelect && !clientSelect.value) {
+                            clientSelect.value = data.client_id;
+                        }
+                    }
+                    if (data.objet) {
+                        const objetTextarea = document.getElementById('id_objet');
+                        if (objetTextarea && !objetTextarea.value) {
+                            objetTextarea.value = data.objet;
+                        }
+                    }
+                })
+                .catch(error => console.error('Error auto-populating AO:', error));
+        });
+    }
+});
+</script>
+{% endblock %}

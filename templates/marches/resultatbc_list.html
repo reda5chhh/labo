@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% load i18n humanize %}
+
+{% block title %}{% trans "Résultats des Appels d'Offres (BC)" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Marchés" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Résultats des BC" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary font-weight-bold">
+                <i class="fa-solid fa-square-poll-vertical text-primary me-2"></i>
+                {% trans "Résultats des Appels d'Offres (BC)" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Suivi de l'attribution des marchés et enregistrement des résultats des plis" %}</p>
+        </div>
+    </div>
+</div>
+
+{% if perms_module.peut_voir %}
+<!-- Zone de Filtrage -->
+<div class="card shadow-sm border-0 mb-4" style="background-color: #f1f5f9;">
+    <div class="card-body p-4">
+        <form method="get" id="filterForm" class="row g-3 align-items-end">
+            <!-- Période Date limite -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-secondary">{% trans "Période (Date limite de dépôt)" %}</label>
+                <div class="input-group">
+                    <span class="input-group-text">{% trans "Du" %}</span>
+                    <input type="date" name="date_du" class="form-control" value="{{ request.GET.date_du }}">
+                    <span class="input-group-text">{% trans "Au" %}</span>
+                    <input type="date" name="date_au" class="form-control" value="{{ request.GET.date_au }}">
+                </div>
+            </div>
+
+            <!-- Réf AO/BC -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">{% trans "Réf AO/BC" %}</label>
+                <input type="text" name="ref_ao" class="form-control" placeholder="AO-..." value="{{ request.GET.ref_ao }}">
+            </div>
+
+            <!-- Etat de la Réponse -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">{% trans "Etat de la Réponse" %}</label>
+                <select name="etat_reponse" class="form-select">
+                    <option value="tous" {% if request.GET.etat_reponse == 'tous' or not request.GET.etat_reponse %}selected{% endif %}>{% trans "Tous" %}</option>
+                    {% for val, label in etat_reponse_choices %}
+                    <option value="{{ val }}" {% if request.GET.etat_reponse == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                <a href="{% url 'marches:resultatbc_list' %}" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tableau principal -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle w-100" id="resultatsTable">
+                <thead style="background-color: #2e75b6; color: white;">
+                    <tr>
+                        <th>{% trans "Réf AO/BC" %}</th>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Projet" %}</th>
+                        <th class="text-center">{% trans "Nombre Participants" %}</th>
+                        <th>{% trans "Entreprise Attributaire" %}</th>
+                        <th class="text-end">{% trans "Montant" %}</th>
+                        <th>{% trans "Etat de la Réponse" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ao in soumissions %}
+                    <tr class="selectable-row" style="cursor: pointer;" 
+                        data-id="{{ ao.id }}"
+                        data-participants="{{ ao.resultat.nombre_participants|default:0 }}"
+                        data-attributaire="{{ ao.resultat.entreprise_attributaire|default:'' }}"
+                        data-montant="{{ ao.resultat.montant|default:0.00 }}"
+                        data-etat="{{ ao.resultat.etat_reponse|default:'NON_ATTRIBUE' }}">
+                        <td class="fw-bold text-primary">{{ ao.reference_ao }}</td>
+                        <td class="fw-semibold text-dark">{{ ao.client.nom }}</td>
+                        <td>{{ ao.objet|truncatechars:45 }}</td>
+                        <td class="text-center">{{ ao.resultat.nombre_participants|default:0 }}</td>
+                        <td>{{ ao.resultat.entreprise_attributaire|default:"—" }}</td>
+                        <td class="text-end fw-semibold">{{ ao.resultat.montant|default:0.00|intcomma }} MAD</td>
+                        <td>
+                            {% if ao.resultat.etat_reponse == 'ADJUGE' %}
+                            <span class="badge bg-success">{% trans "Adjugé" %}</span>
+                            {% elif ao.resultat.etat_reponse == 'REJETE' %}
+                            <span class="badge bg-danger">{% trans "Rejeté" %}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{% trans "Non attribué" %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-square-poll-vertical fa-2x mb-2 d-block"></i>
+                            {% trans "Aucun appel d'offres enregistré" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Panneau de saisie inférieur -->
+<div class="card shadow-sm border border-2 border-primary d-none" id="saisiePanel" style="background-color: #f8fafc;">
+    <div class="card-header bg-primary text-white py-2">
+        <h6 class="mb-0 fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>{% trans "Enregistrer les résultats de l'adjudication" %}</h6>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" action="{% url 'marches:resultatbc_valider' %}" id="validerResultatForm">
+            {% csrf_token %}
+            <input type="hidden" name="ao_id" id="selectedAoId">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-secondary">{% trans "Nombre Participants" %}</label>
+                    <input type="number" name="nombre_participants" id="inputParticipants" class="form-control" min="0" required value="0">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-secondary">{% trans "Entreprise Attributaire" %}</label>
+                    <input type="text" name="entreprise_attributaire" id="inputAttributaire" class="form-control" placeholder="{% trans 'Nom du gagnant...' %}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-secondary">{% trans "Montant" %}</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" name="montant" id="inputMontant" class="form-control text-end fw-semibold" value="0.00">
+                        <span class="input-group-text">MAD</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-secondary">{% trans "Etat de la Réponse" %}</label>
+                    <select name="etat_reponse" id="inputEtat" class="form-select">
+                        {% for val, label in etat_reponse_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-12 d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" class="btn btn-light border" id="btnAnnulerSaisie">{% trans "Annuler" %}</button>
+                    <button type="submit" class="btn btn-success shadow-sm">
+                        <i class="fa-solid fa-circle-check me-1"></i> {% trans "Valider" %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body py-5 text-center text-muted">
+        <i class="fa-solid fa-eye-slash fa-3x mb-3 text-warning"></i>
+        <h5>{% trans "Accès aux données restreint" %}</h5>
+        <p class="mb-0">{% trans "Vous n'avez pas l'autorisation de voir cette page." %}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        var table = $('#resultatsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[0, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        // Clic sur ligne du tableau
+        $('#resultatsTable tbody').on('click', 'tr.selectable-row', function () {
+            if ($(this).hasClass('table-primary')) {
+                $(this).removeClass('table-primary');
+                $('#saisiePanel').addClass('d-none');
+                $('#selectedAoId').val('');
+            } else {
+                table.$('tr.table-primary').removeClass('table-primary');
+                $(this).addClass('table-primary');
+                
+                // Extraire les données
+                var id = $(this).data('id');
+                var participants = $(this).data('participants');
+                var attributaire = $(this).data('attributaire');
+                var montant = $(this).data('montant');
+                var etat = $(this).data('etat');
+
+                // Remplir le formulaire
+                $('#selectedAoId').val(id);
+                $('#inputParticipants').val(participants);
+                $('#inputAttributaire').val(attributaire);
+                $('#inputMontant').val(parseFloat(montant).toFixed(2));
+                $('#inputEtat').val(etat);
+
+                // Afficher le panneau
+                $('#saisiePanel').removeClass('d-none');
+                
+                // Défilement doux vers le panneau
+                $('html, body').animate({
+                    scrollTop: $("#saisiePanel").offset().top - 100
+                }, 300);
+            }
+        });
+
+        // Annuler la saisie
+        $('#btnAnnulerSaisie').click(function() {
+            table.$('tr.table-primary').removeClass('table-primary');
+            $('#saisiePanel').addClass('d-none');
+            $('#selectedAoId').val('');
+        });
+    });
+</script>
+{% endblock %}

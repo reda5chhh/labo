@@ -57,34 +57,69 @@
                             <tbody>
                                 {{ formset.management_form }}
                                 {% for formset_form in formset %}
-                                <tr>
-                                    <!-- Champs masqués d'ID -->
-                                    {% for hidden in formset_form.hidden_fields %}
-                                        {{ hidden }}
-                                    {% endfor %}
-                                    <td>
-                                        {{ formset_form.designation|as_crispy_field }}
-                                    </td>
-                                    <td>
-                                        {{ formset_form.quantite|as_crispy_field }}
-                                    </td>
-                                    <td>
-                                        {{ formset_form.observations|as_crispy_field }}
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        {% if formset.can_delete %}
-                                            <div class="formcheck-delete">
-                                                {{ formset_form.DELETE }}
-                                            </div>
-                                        {% endif %}
-                                    </td>
+                                <tr {% if formset_form.DELETE.value %}style="display:none;"{% endif %}>
+                                     <!-- Champs masqués d'ID -->
+                                     {% for hidden in formset_form.hidden_fields %}
+                                         {{ hidden }}
+                                     {% endfor %}
+                                     <td>
+                                         {{ formset_form.designation|as_crispy_field }}
+                                     </td>
+                                     <td>
+                                         {{ formset_form.quantite|as_crispy_field }}
+                                     </td>
+                                     <td>
+                                         {{ formset_form.observations|as_crispy_field }}
+                                     </td>
+                                     <td class="text-center align-middle">
+                                         {% if formset.can_delete %}
+                                             <div class="formcheck-delete d-none">
+                                                 {{ formset_form.DELETE }}
+                                             </div>
+                                             <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row">
+                                                 <i class="fa-solid fa-trash"></i>
+                                             </button>
+                                         {% endif %}
+                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    
+                    <button type="button" class="btn btn-sm btn-outline-success mt-2 mb-3" id="btn-add-row">
+                        <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Ajouter une ligne" %}
+                    </button>
                 </div>
             </div>
+
+            <!-- Template pour l'ajout dynamique de ligne -->
+            <template id="empty-row-template">
+                <tr>
+                    {% for hidden in formset.empty_form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+                    <td>
+                        {{ formset.empty_form.designation|as_crispy_field }}
+                    </td>
+                    <td>
+                        {{ formset.empty_form.quantite|as_crispy_field }}
+                    </td>
+                    <td>
+                        {{ formset.empty_form.observations|as_crispy_field }}
+                    </td>
+                    <td class="text-center align-middle">
+                        {% if formset.can_delete %}
+                            <div class="formcheck-delete d-none">
+                                {{ formset.empty_form.DELETE }}
+                            </div>
+                        {% endif %}
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            </template>
 
             <!-- Validation -->
             <div class="d-flex gap-2 mt-4 pt-3 border-top">
@@ -99,6 +134,90 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dossierSelect = document.getElementById('id_dossier');
+    const destinataireInput = document.getElementById('id_destinataire');
+    const clientNomInput = document.getElementById('id_client_nom');
+    const dossierObjetInput = document.getElementById('id_objet');
+
+    // Auto-populer client, objet et destinataire lors du changement de dossier
+    if (dossierSelect) {
+        dossierSelect.addEventListener('change', function() {
+            const dossierId = this.value;
+            if (!dossierId) {
+                if (clientNomInput) clientNomInput.value = '';
+                if (dossierObjetInput) dossierObjetInput.value = '';
+                return;
+            }
+
+            fetch(`/api/entity-info/dossier/${dossierId}/`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch dossier info');
+                    return response.json();
+                })
+                .then(dossierData => {
+                    if (dossierObjetInput) {
+                        dossierObjetInput.value = dossierData.objet || '';
+                    }
+                    if (dossierData.client_id) {
+                        return fetch(`/api/entity-info/client/${dossierData.client_id}/`);
+                    }
+                    throw new Error('Dossier has no linked client');
+                })
+                .then(response => response.json())
+                .then(clientData => {
+                    if (clientNomInput) {
+                        clientNomInput.value = clientData.nom || '';
+                    }
+                    if (destinataireInput && !destinataireInput.value) {
+                        destinataireInput.value = clientData.representant || clientData.nom;
+                    }
+                })
+                .catch(error => console.error('Error auto-populating BL:', error));
+        });
+    }
+
+    // Gestion dynamique du formset de détails du BL
+    const btnAddRow = document.getElementById('btn-add-row');
+    const tableBody = document.querySelector('#formsetTable tbody');
+    const totalForms = document.querySelector('input[id$="-TOTAL_FORMS"]');
+
+    if (btnAddRow && tableBody && totalForms) {
+        btnAddRow.addEventListener('click', function() {
+            const nextIndex = parseInt(totalForms.value);
+            const templateHtml = document.getElementById('empty-row-template').innerHTML;
+            const newRowHtml = templateHtml.replace(/__prefix__/g, nextIndex);
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = newRowHtml;
+            tableBody.appendChild(tr);
+            
+            totalForms.value = nextIndex + 1;
+        });
+    }
+
+    // Délégation d'événements pour le bouton de suppression
+    if (tableBody) {
+        tableBody.addEventListener('click', function(e) {
+            const btnDelete = e.target.closest('.btn-delete-row');
+            if (btnDelete) {
+                const tr = btnDelete.closest('tr');
+                if (tr) {
+                    const deleteCheckbox = tr.querySelector('input[name$="-DELETE"]');
+                    if (deleteCheckbox) {
+                        deleteCheckbox.checked = true;
+                        tr.style.display = 'none';
+                    } else {
+                        tr.remove();
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
 
 {% block extra_css %}

@@ -56,6 +56,38 @@ def generate_reference(prefix, model_class):
     return f"{prefix_year}{new_seq:04d}"
 
 
+def generate_date_reference(prefix, model_class, date_value):
+    """
+    Génère une référence unique basée sur la date choisie.
+    Format : PREFIX YYMMDD-XXX (Ex: DEV 260711-001)
+    """
+    if not date_value:
+        date_value = datetime.date.today()
+    elif isinstance(date_value, datetime.datetime):
+        date_value = date_value.date()
+        
+    yymmdd = date_value.strftime('%y%m%d')
+    prefix_day = f"{prefix} {yymmdd}-"
+    
+    # On récupère le dernier enregistrement du même jour en incluant les objets annulés
+    last_instance = None
+    if hasattr(model_class, 'objects_all'):
+        last_instance = model_class.objects_all.filter(reference__startswith=prefix_day).order_by('reference').last()
+    else:
+        last_instance = model_class.objects.filter(reference__startswith=prefix_day).order_by('reference').last()
+        
+    if last_instance:
+        try:
+            # Récupère le dernier compteur après le tiret
+            last_seq = int(last_instance.reference.split('-')[-1])
+            new_seq = last_seq + 1
+        except (ValueError, IndexError):
+            new_seq = 1
+    else:
+        new_seq = 1
+    return f"{prefix_day}{new_seq:03d}"
+
+
 # ============================================================
 # 1. Modèle Client
 # ============================================================
@@ -452,7 +484,7 @@ class RevueDemande(AuditableMixin, BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference('REV', RevueDemande)
+            self.reference = generate_date_reference('REV', RevueDemande, self.date_demande)
         super().save(*args, **kwargs)
 
 
@@ -577,7 +609,11 @@ class Devis(AuditableMixin, BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference('DEV', Devis)
+            self.reference = generate_date_reference('DEV', Devis, self.date_devis)
+        if self.montant_ht:
+            from decimal import Decimal
+            self.montant_tva = Decimal(str(self.montant_ht)) * (Decimal(str(self.taux_tva)) / Decimal('100.00'))
+            self.montant_ttc = Decimal(str(self.montant_ht)) + self.montant_tva
         super().save(*args, **kwargs)
 
     def recalculate_totals(self):
@@ -749,7 +785,7 @@ class Dossier(AuditableMixin, BaseModel):
     def save(self, *args, **kwargs):
         """Génère la référence unique du dossier."""
         if not self.reference:
-            self.reference = generate_reference('DOS', Dossier)
+            self.reference = generate_date_reference('DOS', Dossier, self.date_ouverture)
         super().save(*args, **kwargs)
 
 
@@ -803,6 +839,12 @@ class Convention(AuditableMixin, BaseModel):
         choices=Statut.choices,
         default=Statut.ACTIVE,
     )
+    validee_par_client = models.BooleanField(
+        _('validée par client'),
+        default=False,
+    )
+
+
 
     class Meta(BaseModel.Meta):
         verbose_name = _('convention')
@@ -814,281 +856,11 @@ class Convention(AuditableMixin, BaseModel):
     def save(self, *args, **kwargs):
         """Génère la référence unique de la convention."""
         if not self.reference:
-            self.reference = generate_reference('CONV', Convention)
+            self.reference = generate_date_reference('CONV', Convention, self.date_debut)
         super().save(*args, **kwargs)
 
 
-# ============================================================
-# 6. Modèle AOSoumission
-# ============================================================
-
-class AOSoumission(AuditableMixin, BaseModel):
-    """
-    Appel d'Offres (Marché Public) - Phase Soumission et montage du dossier.
-    """
-
-    class Statut(models.TextChoices):
-        PREPARATION = 'PREPARATION', _('En préparation')
-        SOUMIS = 'SOUMIS', _('Soumis / Déposé')
-        REJETE = 'REJETE', _('Rejeté / Non retenu')
-        ADJUGE = 'ADJUGE', _('Adjugé / Remporté')
-
-    reference_ao = models.CharField(
-        _('référence de l\'appel d\'offres'),
-        max_length=100,
-        unique=True,
-        help_text=_('Référence externe officielle de l\'avis d\'AO'),
-    )
-    client = models.ForeignKey(
-        Client,
-        verbose_name=_('maître d\'ouvrage (Client)'),
-        on_delete=models.PROTECT,
-        related_name='appels_offres_soumis',
-    )
-    objet = models.CharField(
-        _('objet du marché'),
-        max_length=255,
-    )
-    date_limite = models.DateTimeField(
-        _('date et heure limite de dépôt'),
-        help_text=_('Ouverture des plis'),
-    )
-    estimation_initiale = models.DecimalField(
-        _('estimation maître d\'ouvrage'),
-        max_digits=12,
-        decimal_places=2,
-        default=0.00,
-    )
-    montant_soumission = models.DecimalField(
-        _('montant de notre soumission'),
-        max_digits=12,
-        decimal_places=2,
-        default=0.00,
-    )
-    statut = models.CharField(
-        _('statut de soumission'),
-        max_length=20,
-        choices=Statut.choices,
-        default=Statut.PREPARATION,
-    )
-    remarques = models.TextField(
-        _('remarques / composition du groupement'),
-        blank=True,
-    )
-
-    class Meta(BaseModel.Meta):
-        verbose_name = _('appel d\'offres soumission')
-        verbose_name_plural = _('appels d\'offres soumissions')
-
-    def __str__(self):
-        return f"{self.reference_ao} - {self.client.nom} ({self.objet[:30]})"
-
-
-# ============================================================
-# 7. Modèle AOAdjuge
-# ============================================================
-
-class AOAdjuge(AuditableMixin, BaseModel):
-    """
-    Appel d'Offres remporté et notifié. Phase d'exécution du marché.
-    """
-
-    class Statut(models.TextChoices):
-        EN_COURS = 'EN_COURS', _('En cours d\'exécution')
-        TERMINE = 'TERMINE', _('Marché clôturé / Réception définitive')
-        RESILIE = 'RESILIE', _('Marché résilié')
-
-    ao_soumission = models.OneToOneField(
-        AOSoumission,
-        verbose_name=_('appel d\'offres d\'origine'),
-        on_delete=models.PROTECT,
-        related_name='adjudication',
-    )
-    date_adjudication = models.DateField(
-        _('date d\'adjudication'),
-        default=timezone.now,
-    )
-    montant_final = models.DecimalField(
-        _('montant final adjugé (TTC)'),
-        max_digits=12,
-        decimal_places=2,
-    )
-    caution_definitive_deposee = models.BooleanField(
-        _('caution définitive déposée'),
-        default=False,
-    )
-    date_notification = models.DateField(
-        _('date de notification de l\'OS'),
-        null=True,
-        blank=True,
-        help_text=_('Ordre de Service de commencement des prestations'),
-    )
-    statut = models.CharField(
-        _('statut d\'exécution'),
-        max_length=20,
-        choices=Statut.choices,
-        default=Statut.EN_COURS,
-    )
-
-    class Meta(BaseModel.Meta):
-        verbose_name = _('appel d\'offres adjugé')
-        verbose_name_plural = _('appels d\'offres adjugés')
-
-    def __str__(self):
-        return f"Marché {self.ao_soumission.reference_ao} - {self.ao_soumission.client.nom}"
-
-
-# ============================================================
-# 8. Modèle Decompte
-# ============================================================
-
-class Decompte(AuditableMixin, BaseModel):
-    """
-    Décompte mensuel ou situation de travaux pour facturer l'avancement.
-    """
-
-    class Statut(models.TextChoices):
-        BROUILLON = 'BROUILLON', _('Brouillon')
-        VALIDE = 'VALIDE', _('Validé par maître d\'œuvre')
-        PAYE = 'PAYE', _('Encaissé / Réglé')
-
-    reference = models.CharField(
-        _('référence décompte'),
-        max_length=50,
-        unique=True,
-        blank=True,
-    )
-    ao_adjuge = models.ForeignKey(
-        AOAdjuge,
-        verbose_name=_('marché lié'),
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='decomptes',
-    )
-    dossier = models.ForeignKey(
-        Dossier,
-        verbose_name=_('dossier de chantier'),
-        on_delete=models.PROTECT,
-        related_name='decomptes',
-    )
-    numero_decompte = models.PositiveIntegerField(
-        _('numéro de décompte'),
-    )
-    date_decompte = models.DateField(
-        _('date d\'établissement'),
-        default=timezone.now,
-    )
-    montant_ht = models.DecimalField(
-        _('montant H.T.'),
-        max_digits=12,
-        decimal_places=2,
-    )
-    montant_tva = models.DecimalField(
-        _('montant TVA'),
-        max_digits=12,
-        decimal_places=2,
-    )
-    montant_ttc = models.DecimalField(
-        _('montant T.T.C.'),
-        max_digits=12,
-        decimal_places=2,
-    )
-    statut = models.CharField(
-        _('statut'),
-        max_length=20,
-        choices=Statut.choices,
-        default=Statut.BROUILLON,
-    )
-
-    class Meta(BaseModel.Meta):
-        verbose_name = _('décompte')
-        verbose_name_plural = _('décomptes')
-        ordering = ['-date_decompte', '-numero_decompte']
-
-    def __str__(self):
-        return f"DEC N°{self.numero_decompte} ({self.reference}) - {self.dossier.reference}"
-
-    def save(self, *args, **kwargs):
-        """Génère la référence unique du décompte."""
-        if not self.reference:
-            self.reference = generate_reference('DEC', Decompte)
-        super().save(*args, **kwargs)
-
-
-# ============================================================
-# 9. Modèle Caution
-# ============================================================
-
-class Caution(AuditableMixin, BaseModel):
-    """
-    Caution bancaire émise par le laboratoire pour un marché public.
-    """
-
-    class TypeCaution(models.TextChoices):
-        PROVISOIRE = 'PROVISOIRE', _('Caution Provisoire (Soumission)')
-        DEFINITIVE = 'DEFINITIVE', _('Caution Définitive (Exécution)')
-        RETENUE_GARANTIE = 'RETENUE_GARANTIE', _('Caution de Retenue de Garantie')
-
-    class Statut(models.TextChoices):
-        DEPOSE = 'DEPOSE', _('Déposée')
-        LIBERE = 'LIBERE', _('Libérée / Mainlevée obtenue')
-        CONFISQUE = 'CONFISQUE', _('Confisquée par le client')
-
-    ao_soumission = models.ForeignKey(
-        AOSoumission,
-        verbose_name=_('appel d\'offres soumission'),
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='cautions',
-        help_text=_('Requis si caution provisoire'),
-    )
-    ao_adjuge = models.ForeignKey(
-        AOAdjuge,
-        verbose_name=_('marché adjugé'),
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='cautions',
-        help_text=_('Requis si caution définitive ou retenue de garantie'),
-    )
-    banque = models.CharField(
-        _('banque émettrice'),
-        max_length=150,
-    )
-    type_caution = models.CharField(
-        _('type de caution'),
-        max_length=30,
-        choices=TypeCaution.choices,
-    )
-    montant = models.DecimalField(
-        _('montant caution (MAD)'),
-        max_digits=12,
-        decimal_places=2,
-    )
-    date_depot = models.DateField(
-        _('date de dépôt / émission'),
-        default=timezone.now,
-    )
-    date_mainlevee = models.DateField(
-        _('date de mainlevée'),
-        null=True,
-        blank=True,
-    )
-    statut = models.CharField(
-        _('statut'),
-        max_length=20,
-        choices=Statut.choices,
-        default=Statut.DEPOSE,
-    )
-
-    class Meta(BaseModel.Meta):
-        verbose_name = _('caution')
-        verbose_name_plural = _('cautions')
-
-    def __str__(self):
-        return f"Caution {self.get_type_caution_display()} - {self.montant} MAD"
+# Modèles de Marchés déplacés vers l'application marches
 
 
 # ============================================================
@@ -1125,6 +897,7 @@ class BonLivraison(AuditableMixin, BaseModel):
     destinataire = models.CharField(
         _('réceptionné par (destinataire)'),
         max_length=255,
+        blank=True,
         help_text=_('Nom de la personne physique qui reçoit les PV'),
     )
     statut = models.CharField(
@@ -1155,6 +928,15 @@ class BonLivraison(AuditableMixin, BaseModel):
         _("accusé de réception"),
         default=False,
     )
+    date_accuse = models.DateField(
+        _("date d'accusé"),
+        null=True,
+        blank=True,
+    )
+    objet = models.TextField(
+        _("objet de la livraison"),
+        blank=True,
+    )
 
     class Meta(BaseModel.Meta):
         verbose_name = _('bon de livraison')
@@ -1164,9 +946,11 @@ class BonLivraison(AuditableMixin, BaseModel):
         return f"{self.reference} - {self.dossier.reference} ({self.date_bl})"
 
     def save(self, *args, **kwargs):
-        """Génère la référence unique du bon de livraison."""
+        """Génère la référence unique du bon de livraison et remplit l'objet si vide."""
         if not self.reference:
-            self.reference = generate_reference('BL', BonLivraison)
+            self.reference = generate_date_reference('BL', BonLivraison, self.date_bl)
+        if not self.objet and self.dossier:
+            self.objet = self.dossier.nom_projet
         super().save(*args, **kwargs)
 
 
@@ -1189,6 +973,11 @@ class DetailBonLivraison(AuditableMixin, BaseModel):
         _('désignation / livrable'),
         max_length=255,
     )
+    ref_rapport = models.CharField(
+        _('référence rapport'),
+        max_length=100,
+        blank=True,
+    )
     quantite = models.DecimalField(
         _('quantité'),
         max_digits=10,
@@ -1209,48 +998,7 @@ class DetailBonLivraison(AuditableMixin, BaseModel):
         return f"{self.designation} (x{self.quantite})"
 
 
-# ============================================================
-# 12. Modèle ResultatBC
-# ============================================================
-
-class ResultatBC(AuditableMixin, BaseModel):
-    """
-    Résultats des Bons de Commande.
-    Mesure de la satisfaction client et clôture finale de la commande.
-    """
-
-    client = models.ForeignKey(
-        Client,
-        verbose_name=_('client'),
-        on_delete=models.PROTECT,
-        related_name='resultats_bc',
-    )
-    dossier = models.ForeignKey(
-        Dossier,
-        verbose_name=_('dossier concerné'),
-        on_delete=models.PROTECT,
-        related_name='resultats_bc',
-    )
-    date_evaluation = models.DateField(
-        _('date d\'évaluation'),
-        default=timezone.now,
-    )
-    note_satisfaction = models.PositiveIntegerField(
-        _('note de satisfaction (1 à 5)'),
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-        help_text=_('1 = Très insatisfait, 5 = Très satisfait'),
-    )
-    commentaires = models.TextField(
-        _('remarques & opportunités d\'amélioration'),
-        blank=True,
-    )
-
-    class Meta(BaseModel.Meta):
-        verbose_name = _('résultat BC / enquête')
-        verbose_name_plural = _('résultats BC / enquêtes')
-
-    def __str__(self):
-        return f"Évaluation {self.dossier.reference} - Note: {self.note_satisfaction}/5"
+# ResultatBC déplacé vers l'application marches
 
 
 # ============================================================

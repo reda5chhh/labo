@@ -52,6 +52,22 @@
                 </a>
             </div>
             <div class="card-body">
+                <!-- Zone de Filtrage Acheteur -->
+                <form method="get" class="row g-3 mb-4 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Nom de l'acheteur (Client)" %}</label>
+                        <input type="text" name="nom_acheteur" class="form-control" placeholder="{% trans 'Rechercher par acheteur...' %}" value="{{ request.GET.nom_acheteur }}">
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i> {% trans "Rechercher" %}
+                        </button>
+                        <a href="?" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </a>
+                    </div>
+                </form>
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle w-100 datatable">
                         <thead>
@@ -71,7 +87,7 @@
                                 <td class="fw-bold">{{ ao.reference_ao }}</td>
                                 <td class="fw-semibold text-dark">{{ ao.client.nom }}</td>
                                 <td>{{ ao.objet|truncatechars:35 }}</td>
-                                <td>{{ ao.date_limite|date:"d/m/Y H:i" }}</td>
+                                <td>{{ ao.date_limite|date:"d/m/Y" }}{% if ao.heure_limite %} {{ ao.heure_limite|time:"H:i" }}{% endif %}</td>
                                 <td class="text-end fw-semibold">{{ ao.montant_soumission|intcomma }} MAD</td>
                                 <td>
                                     {% if ao.statut == 'ADJUGE' %}

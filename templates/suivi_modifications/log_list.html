@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Suivi des Modifications" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Service Informatique" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Suivi des modifications" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary">
+                <i class="fa-solid fa-list-check me-2"></i>{% trans "Suivi des Modifications" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Consulter et filtrer l'historique d'audit et les modifications du système" %}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Panel -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white border-0 py-3">
+        <h5 class="card-title text-navy mb-0">
+            <i class="fa-solid fa-filter me-2 text-primary"></i>{% trans "Filtres de recherche" %}
+        </h5>
+    </div>
+    <div class="card-body pt-0">
+        <form method="get" action="{% url 'suivi_modifications:dashboard' %}" class="row g-3">
+            <div class="col-md-3">
+                <label for="action_type" class="form-label small fw-semibold text-muted">{% trans "Type d'action" %}</label>
+                <select name="action_type" id="action_type" class="form-select">
+                    <option value="">-- {% trans "Toutes les actions" %} --</option>
+                    {% for val, label in action_choices %}
+                    <option value="{{ val }}" {% if active_action_type == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label for="user_id" class="form-label small fw-semibold text-muted">{% trans "Utilisateur" %}</label>
+                <select name="user_id" id="user_id" class="form-select">
+                    <option value="">-- {% trans "Tous les utilisateurs" %} --</option>
+                    {% for user in users %}
+                    <option value="{{ user.pk }}" {% if active_user_id == user.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ user.get_full_name|default:user.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="model_name" class="form-label small fw-semibold text-muted">{% trans "Modèle / Module" %}</label>
+                <select name="model_name" id="model_name" class="form-select">
+                    <option value="">-- {% trans "Tous les modèles" %} --</option>
+                    {% for model_item in models_logged %}
+                    <option value="{{ model_item }}" {% if active_model_name == model_item %}selected{% endif %}>{{ model_item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="search" class="form-label small fw-semibold text-muted">{% trans "Recherche textuelle" %}</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="search" id="search" class="form-control border-start-0" placeholder="{% trans 'IP, Description, ID...' %}" value="{{ active_search }}">
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label for="date_du" class="form-label small fw-semibold text-muted">{% trans "Depuis le" %}</label>
+                <input type="date" name="date_du" id="date_du" class="form-control" value="{{ active_date_du }}">
+            </div>
+
+            <div class="col-md-3">
+                <label for="date_au" class="form-label small fw-semibold text-muted">{% trans "Jusqu'au" %}</label>
+                <input type="date" name="date_au" id="date_au" class="form-control" value="{{ active_date_au }}">
+            </div>
+
+            <div class="col-md-6 d-flex align-items-end justify-content-end gap-2">
+                <a href="{% url 'suivi_modifications:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-rotate-left me-1"></i>{% trans "Réinitialiser" %}
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="fa-solid fa-circle-check me-1"></i>{% trans "Filtrer" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Dashboard List -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background-color: #e6edf7; color: #1a3052;">
+                    <tr>
+                        <th style="width: 180px;">{% trans "Date & Heure" %}</th>
+                        <th>{% trans "Utilisateur" %}</th>
+                        <th style="width: 140px;" class="text-center">{% trans "Action" %}</th>
+                        <th>{% trans "Modèle" %}</th>
+                        <th>{% trans "Description / Représentation" %}</th>
+                        <th>{% trans "Adresse IP" %}</th>
+                        <th class="text-end" style="width: 120px;">{% trans "Détails" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-muted fw-semibold">
+                            {{ log.timestamp|date:"d/m/Y H:i:s" }}
+                        </td>
+                        <td>
+                            {% if log.user %}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-circle bg-secondary text-white" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;">
+                                    {{ log.user.first_name|slice:":1"|upper }}{{ log.user.last_name|slice:":1"|upper }}
+                                </div>
+                                <span class="fw-semibold text-navy">{{ log.user.get_full_name }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-muted italic"><i class="fa-solid fa-robot me-1"></i>System</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if log.action_type == 'CREATE' %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-circle-plus me-1"></i>{% trans "Création" %}
+                            </span>
+                            {% elif log.action_type == 'UPDATE' %}
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-pencil me-1"></i>{% trans "Modification" %}
+                            </span>
+                            {% elif log.action_type == 'CANCEL' %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-ban me-1"></i>{% trans "Annulation" %}
+                            </span>
+                            {% elif log.action_type == 'RESTORE' %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i>{% trans "Restauration" %}
+                            </span>
+                            {% elif log.action_type == 'DELETE' %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-trash-can me-1"></i>{% trans "Suppression" %}
+                            </span>
+                            {% elif log.action_type == 'LOGIN' %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-right-to-bracket me-1"></i>{% trans "Connexion" %}
+                            </span>
+                            {% elif log.action_type == 'LOGOUT' %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 w-100 py-1.5">
+                                <i class="fa-solid fa-right-from-bracket me-1"></i>{% trans "Déconnexion" %}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 w-100 py-1.5">
+                                {{ log.get_action_type_display }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-navy border font-monospace">{{ log.model_name|default:"—" }}</span>
+                        </td>
+                        <td class="text-navy fw-semibold">
+                            {{ log.object_repr|default:"—" }}
+                            {% if log.object_id %}
+                            <small class="text-muted">(ID: {{ log.object_id }})</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <code class="text-muted">{{ log.ip_address|default:"—" }}</code>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-primary shadow-xs px-2 py-1"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#logDetailModal"
+                                    data-old="{{ log.old_value_json }}"
+                                    data-new="{{ log.new_value_json }}"
+                                    data-action="{{ log.get_action_type_display }}"
+                                    data-model="{{ log.model_name|default:"N/A" }}"
+                                    data-repr="{{ log.object_repr|default:"N/A" }}"
+                                    data-time="{{ log.timestamp|date:'d/m/Y H:i:s' }}"
+                                    data-user="{% if log.user %}{{ log.user.get_full_name }}{% else %}System{% endif %}"
+                                    data-ip="{{ log.ip_address|default:'—' }}"
+                                    onclick="showLogDetails(this)">
+                                <i class="fa-solid fa-eye me-1"></i>{% trans "Détails" %}
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-regular fa-folder-open fa-3x mb-3 d-block text-secondary"></i>
+                            {% trans "Aucun journal d'audit ne correspond à vos filtres de recherche." %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                {% trans "Affichage de la page" %} {{ page_obj.number }} {% trans "sur" %} {{ paginator.num_pages }}
+            </span>
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if active_action_type %}&action_type={{ active_action_type }}{% endif %}{% if active_user_id %}&user_id={{ active_user_id }}{% endif %}{% if active_model_name %}&model_name={{ active_model_name }}{% endif %}{% if active_search %}&search={{ active_search }}{% endif %}{% if active_date_du %}&date_du={{ active_date_du }}{% endif %}{% if active_date_au %}&date_au={{ active_date_au }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if active_action_type %}&action_type={{ active_action_type }}{% endif %}{% if active_user_id %}&user_id={{ active_user_id }}{% endif %}{% if active_model_name %}&model_name={{ active_model_name }}{% endif %}{% if active_search %}&search={{ active_search }}{% endif %}{% if active_date_du %}&date_du={{ active_date_du }}{% endif %}{% if active_date_au %}&date_au={{ active_date_au }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if active_action_type %}&action_type={{ active_action_type }}{% endif %}{% if active_user_id %}&user_id={{ active_user_id }}{% endif %}{% if active_model_name %}&model_name={{ active_model_name }}{% endif %}{% if active_search %}&search={{ active_search }}{% endif %}{% if active_date_du %}&date_du={{ active_date_du }}{% endif %}{% if active_date_au %}&date_au={{ active_date_au }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Detail de Modification -->
+<div class="modal fade" id="logDetailModal" tabindex="-1" aria-labelledby="logDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-navy text-white py-3">
+                <h5 class="modal-title" id="logDetailModalLabel">
+                    <i class="fa-solid fa-magnifying-glass-chart me-2"></i>{% trans "Détail de la modification" %}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Log Metadata Info -->
+                <div class="bg-light rounded p-3 mb-4">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <span class="text-muted small fw-semibold d-block">{% trans "Action" %}</span>
+                            <span class="badge bg-primary px-3 py-1.5" id="modal-action"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-muted small fw-semibold d-block">{% trans "Modèle affecté" %}</span>
+                            <code class="fs-6 fw-bold text-navy" id="modal-model"></code>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <span class="text-muted small fw-semibold d-block">{% trans "Représentation de l'objet" %}</span>
+                            <span class="fw-semibold text-dark" id="modal-repr"></span>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <span class="text-muted small fw-semibold d-block">{% trans "Métadonnées de session" %}</span>
+                            <span class="small text-muted" id="modal-meta"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Changes Diff Table -->
+                <h6 class="text-navy fw-bold mb-3"><i class="fa-solid fa-code-compare me-2"></i>{% trans "Comparaison des données (Ancien vs Nouveau)" %}</h6>
+                <div class="table-responsive border rounded">
+                    <table class="table table-striped align-middle mb-0" id="modal-diff-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 25%;">{% trans "Champ" %}</th>
+                                <th style="width: 37.5%;">{% trans "Ancienne Valeur" %}</th>
+                                <th style="width: 37.5%;">{% trans "Nouvelle Valeur" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-diff-tbody">
+                            <!-- Populated via Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 py-3 bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Fermer" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showLogDetails(btn) {
+    // Retrieve inline raw JSON strings
+    let rawOld = btn.getAttribute('data-old') || '{}';
+    let rawNew = btn.getAttribute('data-new') || '{}';
+    
+    // Safety fallback: strip script tags or any wrapping HTML elements if generated by django serializers
+    if (rawOld.includes('<script')) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = rawOld;
+        const scriptTag = tempDiv.querySelector('script');
+        rawOld = scriptTag ? scriptTag.textContent : '{}';
+    }
+    if (rawNew.includes('<script')) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = rawNew;
+        const scriptTag = tempDiv.querySelector('script');
+        rawNew = scriptTag ? scriptTag.textContent : '{}';
+    }
+    
+    let oldVal = {};
+    let newVal = {};
+    
+    try {
+        oldVal = JSON.parse(rawOld) || {};
+    } catch(e) {
+        console.error("Error parsing old json:", e);
+    }
+    
+    try {
+        newVal = JSON.parse(rawNew) || {};
+    } catch(e) {
+        console.error("Error parsing new json:", e);
+    }
+    
+    const action = btn.getAttribute('data-action');
+    const model = btn.getAttribute('data-model');
+    const repr = btn.getAttribute('data-repr');
+    const timestamp = btn.getAttribute('data-time');
+    const user = btn.getAttribute('data-user');
+    const ip = btn.getAttribute('data-ip');
+    
+    document.getElementById('modal-action').innerText = action;
+    document.getElementById('modal-model').innerText = model;
+    document.getElementById('modal-repr').innerText = repr;
+    document.getElementById('modal-meta').innerText = `${timestamp} | par ${user} | IP: ${ip}`;
+    
+    const tbody = document.getElementById('modal-diff-tbody');
+    tbody.innerHTML = '';
+    
+    // Merge keys from both objects
+    const allKeys = new Set([...Object.keys(oldVal), ...Object.keys(newVal)]);
+    const sortedKeys = Array.from(allKeys).sort();
+    
+    if (sortedKeys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">{% trans "Aucune donnée de champ enregistrée pour cette action." %}</td></tr>`;
+        return;
+    }
+    
+    let hasChanges = false;
+    
+    sortedKeys.forEach(key => {
+        const oldRaw = oldVal[key];
+        const newRaw = newVal[key];
+        
+        const oldStr = oldRaw !== undefined && oldRaw !== null ? String(oldRaw) : '—';
+        const newStr = newRaw !== undefined && newRaw !== null ? String(newRaw) : '—';
+        
+        // Skip unneeded model tracking keys if they are unchanged
+        if (['created_at', 'updated_at', 'created_by', 'updated_by', 'annule_le', 'annule_par', 'est_annule'].includes(key) && oldStr === newStr) {
+            return;
+        }
+        
+        const isChanged = oldStr !== newStr;
+        if (isChanged) {
+            hasChanges = true;
+        }
+        
+        const row = document.createElement('tr');
+        if (isChanged) {
+            row.className = 'table-warning';
+        }
+        
+        row.innerHTML = `
+            <td class="fw-bold">${key}</td>
+            <td class="${isChanged ? 'text-danger bg-danger-subtle bg-opacity-25 px-2' : ''}">${oldStr}</td>
+            <td class="${isChanged ? 'text-success bg-success-subtle bg-opacity-25 px-2 fw-semibold' : ''}">${newStr}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // In case of CREATE (no changes between old/new because old is completely empty), list new values
+    if (!hasChanges) {
+        tbody.innerHTML = '';
+        sortedKeys.forEach(key => {
+            const oldRaw = oldVal[key];
+            const newRaw = newVal[key];
+            const oldStr = oldRaw !== undefined && oldRaw !== null ? String(oldRaw) : '—';
+            const newStr = newRaw !== undefined && newRaw !== null ? String(newRaw) : '—';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="fw-bold">${key}</td>
+                <td>${oldStr}</td>
+                <td>${newStr}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+}
+</script>
+
+<style>
+.bg-navy {
+    background-color: #1a3052 !important;
+}
+.text-navy {
+    color: #1a3052 !important;
+}
+.shadow-xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+</style>
+{% endblock %}

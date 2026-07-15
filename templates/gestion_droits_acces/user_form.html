@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Service Informatique" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'gestion_droits_acces:user_list' %}">{% trans "Utilisateurs" %}</a></li>
+<li class="breadcrumb-item active">{{ titre }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title text-primary">
+            <i class="fa-solid fa-user-gear me-2"></i>{{ titre }}
+        </h1>
+        <p class="page-subtitle text-muted">{% trans "Remplissez le formulaire ci-dessous pour gérer l'utilisateur" %}</p>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Identifiant (Username)" %} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                            <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Adresse email" %}
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="text-danger small mt-1">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Prénom" %}
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Nom" %}
+                            </label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-12">
+                            <label for="{{ form.fonction.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Fonction / Poste au laboratoire" %}
+                            </label>
+                            {{ form.fonction }}
+                            {% if form.fonction.errors %}
+                            <div class="text-danger small mt-1">{{ form.fonction.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.password1 %}
+                        <div class="col-md-6">
+                            <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Mot de passe" %} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}
+                            <div class="text-danger small mt-1">{{ form.password1.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% trans "Confirmer mot de passe" %} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}
+                            <div class="text-danger small mt-1">{{ form.password2.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if form.new_password %}
+                        <div class="col-md-12">
+                            <label for="{{ form.new_password.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {{ form.new_password.label }}
+                            </label>
+                            {{ form.new_password }}
+                            {% if form.new_password.errors %}
+                            <div class="text-danger small mt-1">{{ form.new_password.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check form-switch mt-2">
+                                {{ form.est_admin }}
+                                <label class="form-check-label fw-semibold text-secondary ms-2" for="{{ form.est_admin.id_for_label }}">
+                                    {% trans "Est administrateur (Accès total)" %}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check form-switch mt-2">
+                                {{ form.is_active }}
+                                <label class="form-check-label fw-semibold text-secondary ms-2" for="{{ form.is_active.id_for_label }}">
+                                    {% trans "Compte actif (Connexion autorisée)" %}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                        <a href="{% url 'gestion_droits_acces:user_list' %}" class="btn btn-outline-secondary">
+                            {% trans "Annuler" %}
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>{{ action }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

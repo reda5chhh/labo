@@ -1,0 +1,57 @@
+{% load i18n humanize %}
+{% for dec in decomptes %}
+<tr {% if dec.est_annule %}style="opacity: 0.6; background-color: #f8d7da !important;" class="text-muted text-decoration-line-through"{% endif %}>
+    <td class="text-center fw-bold">{{ dec.numero_decompte }}</td>
+    <td>{{ dec.date_decompte|date:"d/m/Y" }}</td>
+    <td class="text-end fw-bold text-primary">{{ dec.montant_ttc|intcomma }} MAD</td>
+    <td><code>{{ dec.reference }}</code></td>
+    <td class="text-center">
+        {% if dec.chemin_decompte %}
+        <a href="{{ dec.chemin_decompte.url }}" target="_blank" class="btn btn-sm btn-link text-decoration-none p-0">
+            {% if '.doc' in dec.chemin_decompte.name|lower %}
+            <i class="fa-solid fa-file-word text-primary fa-lg" title="{% trans 'Télécharger le document Word' %}"></i>
+            {% elif '.pdf' in dec.chemin_decompte.name|lower %}
+            <i class="fa-solid fa-file-pdf text-danger fa-lg" title="{% trans 'Télécharger le document PDF' %}"></i>
+            {% else %}
+            <i class="fa-solid fa-file text-secondary fa-lg" title="{% trans 'Télécharger le document' %}"></i>
+            {% endif %}
+        </a>
+        {% else %}
+        <span class="text-muted">—</span>
+        {% endif %}
+    </td>
+    <td class="text-end">
+        <div class="d-inline-flex gap-1 align-items-center">
+            {% if not dec.est_annule %}
+            <a href="{% url 'marches:decompte_update' dec.pk %}?tab=adjudications" class="btn btn-sm btn-icon p-0 me-1" title="{% trans 'Modifier' %}">
+                <i class="fa-solid fa-pencil text-primary"></i>
+            </a>
+            {% if has_cancel_perm %}
+            <form method="post" action="{% url 'marches:decompte_delete' dec.pk %}?tab=adjudications" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de ce décompte ?" %}')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-icon p-0 me-1" title="{% trans 'Annuler' %}" style="background: none; border: none; vertical-align: middle;">
+                    <i class="fa-solid fa-ban text-warning"></i>
+                </button>
+            </form>
+            {% endif %}
+            {% else %}
+            {% if has_cancel_perm %}
+            <form method="post" action="{% url 'marches:decompte_restore' dec.pk %}?tab=adjudications" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-icon p-0 me-1" title="{% trans 'Restaurer' %}" style="background: none; border: none; vertical-align: middle;">
+                    <i class="fa-solid fa-rotate-left text-success"></i>
+                </button>
+            </form>
+            {% endif %}
+            {% endif %}
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="6" class="text-center py-4 text-muted">
+        <i class="fa-solid fa-folder-open me-2"></i>
+        {% trans "Aucun décompte ou situation enregistré pour ce marché." %}
+    </td>
+</tr>
+{% endfor %}

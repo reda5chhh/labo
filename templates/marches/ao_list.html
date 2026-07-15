@@ -1,0 +1,688 @@
+{% extends "base.html" %}
+{% load i18n humanize %}
+
+{% block title %}{% trans "Marchés Publics & Appels d'Offres" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Marchés" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Appels d'Offres & Cautions" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1 class="page-title text-primary font-weight-bold">
+        <i class="fa-solid fa-gavel text-primary me-2"></i>
+        {% trans "Marchés Publics, Cautions & Décomptes" %}
+    </h1>
+    <p class="page-subtitle text-muted">{% trans "Gestion des soumissions, adjudications, cautions bancaires et décomptes de travaux" %}</p>
+</div>
+
+<!-- Navigation par Onglets -->
+<ul class="nav nav-tabs mb-4" id="aoTabs" role="tablist">
+    {% if can_view_soumissions %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if not request.GET.tab or request.GET.tab == 'soumissions' %}active{% endif %}" id="soumissions-tab" data-bs-toggle="tab" data-bs-target="#soumissions" type="button" role="tab" aria-controls="soumissions" aria-selected="{% if not request.GET.tab or request.GET.tab == 'soumissions' %}true{% else %}false{% endif %}">
+            <i class="fa-solid fa-file-signature me-1"></i> {% trans "AO Soumissions" %}
+        </button>
+    </li>
+    {% endif %}
+    {% if can_view_adjudications %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if request.GET.tab == 'adjudications' %}active{% endif %}" id="adjudications-tab" data-bs-toggle="tab" data-bs-target="#adjudications" type="button" role="tab" aria-controls="adjudications" aria-selected="{% if request.GET.tab == 'adjudications' %}true{% else %}false{% endif %}">
+            <i class="fa-solid fa-award me-1"></i> {% trans "AO/BC Adjugé" %}
+        </button>
+    </li>
+    {% endif %}
+    {% if can_view_cautions %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if request.GET.tab == 'cautions' %}active{% endif %}" id="cautions-tab" data-bs-toggle="tab" data-bs-target="#cautions" type="button" role="tab" aria-controls="cautions" aria-selected="{% if request.GET.tab == 'cautions' %}true{% else %}false{% endif %}">
+            <i class="fa-solid fa-shield-halved me-1"></i> {% trans "Caution" %}
+        </button>
+    </li>
+    {% endif %}
+    {% if can_view_decomptes %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if request.GET.tab == 'decomptes' %}active{% endif %}" id="decomptes-tab" data-bs-toggle="tab" data-bs-target="#decomptes" type="button" role="tab" aria-controls="decomptes" aria-selected="{% if request.GET.tab == 'decomptes' %}true{% else %}false{% endif %}">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i> {% trans "Décomptes / Situations" %}
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+<div class="tab-content" id="aoTabsContent">
+    <!-- ── TAB 1: SOUMISSIONS ── -->
+    {% if can_view_soumissions %}
+    <div class="tab-pane fade {% if not request.GET.tab or request.GET.tab == 'soumissions' %}show active{% endif %}" id="soumissions" role="tabpanel" aria-labelledby="soumissions-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Appels d'Offres en Phase Soumission" %}</h5>
+                <div>
+                    <a href="{% url 'marches:aosoumission_create' %}?tab=soumissions" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Nouvelle Soumission" %}
+                    </a>
+                    {% if has_cancel_perm %}
+                        {% if afficher_annules %}
+                        <a href="?tab=soumissions" class="btn btn-sm btn-outline-secondary shadow-sm ms-2">
+                            <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+                        </a>
+                        {% else %}
+                        <a href="?tab=soumissions&afficher_annules=on" class="btn btn-sm btn-outline-warning shadow-sm ms-2">
+                            <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Zone de Filtrage Acheteur -->
+                <form method="get" class="row g-3 mb-4 align-items-end">
+                    <input type="hidden" name="tab" value="soumissions">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Nom de l'acheteur (Client)" %}</label>
+                        <input type="text" name="nom_acheteur" class="form-control" placeholder="{% trans 'Rechercher par acheteur...' %}" value="{{ request.GET.nom_acheteur }}">
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i> {% trans "Rechercher" %}
+                        </button>
+                        <a href="?" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </a>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead style="background-color: #2e75b6; color: white;">
+                            <tr>
+                                <th>{% trans "Réf. Interne" %}</th>
+                                <th>{% trans "N° appel d'offre" %}</th>
+                                <th>{% trans "Type" %}</th>
+                                <th>{% trans "Date d'ouverture" %}</th>
+                                <th>{% trans "Acheteur (Client)" %}</th>
+                                <th class="text-end">{% trans "Estimation (MAD)" %}</th>
+                                <th>{% trans "Statut" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ao in soumissions %}
+                            <tr {% if ao.est_annule %}class="table-danger" style="text-decoration: line-through;"{% endif %}>
+                                <td><strong>{{ ao.reference }}</strong></td>
+                                <td>{{ ao.reference_ao|default:"—" }}</td>
+                                <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ ao.get_ao_bc_display }}</span></td>
+                                <td>
+                                    {% if ao.date_limite %}
+                                        {{ ao.date_limite|date:"d/m/Y" }} {% if ao.heure_limite %}{{ ao.heure_limite|time:"H:i" }}{% endif %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>{{ ao.client.nom }}</td>
+                                <td class="text-end fw-semibold text-secondary">{{ ao.estimation|default:"0"|intcomma }}</td>
+                                <td>
+                                    {% if ao.statut == 'EN_PREPARATION' %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ ao.get_statut_display }}</span>
+                                    {% elif ao.statut == 'SOUMIS' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">{{ ao.get_statut_display }}</span>
+                                    {% elif ao.statut == 'REJETE' %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ ao.get_statut_display }}</span>
+                                    {% else %}
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">{{ ao.get_statut_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1 align-items-center">
+                                        {% if not ao.est_annule %}
+                                        <a href="{% url 'marches:aosoumission_update' ao.pk %}?tab=soumissions" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                            <i class="fa-solid fa-pencil text-primary"></i>
+                                        </a>
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:aosoumission_delete' ao.pk %}?tab=soumissions" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de cette soumission ?" %}')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-ban text-warning"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% else %}
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:aosoumission_restore' ao.pk %}?tab=soumissions" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-rotate-left text-success"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── TAB 2: ADJUDICATIONS (AO/BC Adjugé) ── -->
+    {% if can_view_adjudications %}
+    <div class="tab-pane fade {% if request.GET.tab == 'adjudications' %}show active{% endif %}" id="adjudications" role="tabpanel" aria-labelledby="adjudications-tab">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Marchés Remportés & en Cours d'Exécution" %}</h5>
+                <div>
+                    <a href="{% url 'marches:aoadjuge_create' %}?tab=adjudications" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Enregistrer Marché Adjugé" %}
+                    </a>
+                    {% if has_cancel_perm %}
+                        {% if afficher_annules %}
+                        <a href="?tab=adjudications" class="btn btn-sm btn-outline-secondary shadow-sm ms-2">
+                            <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+                        </a>
+                        {% else %}
+                        <a href="?tab=adjudications&afficher_annules=on" class="btn btn-sm btn-outline-warning shadow-sm ms-2">
+                            <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Zone de Filtrage Adjudications -->
+                <form method="get" class="row g-3 mb-4 align-items-end">
+                    <input type="hidden" name="tab" value="adjudications">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Maitre d'ouvrage" %}</label>
+                        <input type="text" name="maitre_ouvrage" class="form-control" placeholder="{% trans 'Rechercher...' %}" value="{{ request.GET.maitre_ouvrage }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Convention du" %}</label>
+                        <div class="input-group">
+                            <input type="date" name="date_conv_du" class="form-control" value="{{ request.GET.date_conv_du }}">
+                            <span class="input-group-text">{% trans "Au" %}</span>
+                            <input type="date" name="date_conv_au" class="form-control" value="{{ request.GET.date_conv_au }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Achevé" %}</label>
+                        <select name="acheve" class="form-select">
+                            <option value="tous" {% if request.GET.acheve == 'tous' or not request.GET.acheve %}selected{% endif %}>{% trans "Tous" %}</option>
+                            <option value="oui" {% if request.GET.acheve == 'oui' %}selected{% endif %}>{% trans "Oui" %}</option>
+                            <option value="non" {% if request.GET.acheve == 'non' %}selected{% endif %}>{% trans "Non" %}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Soldé" %}</label>
+                        <select name="solde" class="form-select">
+                            <option value="tous" {% if request.GET.solde == 'tous' or not request.GET.solde %}selected{% endif %}>{% trans "Tous" %}</option>
+                            <option value="oui" {% if request.GET.solde == 'oui' %}selected{% endif %}>{% trans "Oui" %}</option>
+                            <option value="non" {% if request.GET.solde == 'non' %}selected{% endif %}>{% trans "Non" %}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                        <a href="?tab=adjudications" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </a>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100" id="adjudicationsTable">
+                        <thead style="background-color: #2e75b6; color: white;">
+                            <tr>
+                                <th>{% trans "N° appel d'offre" %}</th>
+                                <th>{% trans "Type" %}</th>
+                                <th>{% trans "N° marché ou BC" %}</th>
+                                <th>{% trans "Date" %}</th>
+                                <th>{% trans "Client" %}</th>
+                                <th class="text-end">{% trans "Montant du marché" %}</th>
+                                <th>{% trans "Date OS" %}</th>
+                                <th>{% trans "Délai" %}</th>
+                                <th class="text-end">{% trans "Travaux réalisés" %}</th>
+                                <th class="text-end">{% trans "Reste à réaliser" %}</th>
+                                <th class="text-end">{% trans "Montant encaissé" %}</th>
+                                <th class="text-end">{% trans "Reste à encaisser" %}</th>
+                                <th>{% trans "Achevé" %}</th>
+                                <th>{% trans "Soldé" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for adj in adjudications %}
+                            <tr class="selectable-market-row {% if adj.est_annule %}table-danger{% endif %}" data-id="{{ adj.id }}" data-objet="{{ adj.objet }}" style="cursor: pointer; {% if adj.est_annule %}text-decoration: line-through;{% endif %}">
+                                <td>{{ adj.ao_soumission.reference_ao|default:"—" }}</td>
+                                <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ adj.ao_soumission.get_ao_bc_display }}</span></td>
+                                <td>{{ adj.num_marche }}</td>
+                                <td>{{ adj.date_adjudication|date:"d/m/Y" }}</td>
+                                <td>{{ adj.client.nom }}</td>
+                                <td class="text-end fw-semibold">{{ adj.montant|intcomma }} MAD</td>
+                                <td>{{ adj.date_os|date:"d/m/Y"|default:"—" }}</td>
+                                <td>{{ adj.delai_realisation|default:"—" }} {% trans "jours" %}</td>
+                                <td class="text-end text-success">{{ adj.travaux_realises|intcomma }} MAD</td>
+                                <td class="text-end text-danger">{{ adj.reste_a_realiser|intcomma }} MAD</td>
+                                <td class="text-end text-success">{{ adj.montant_encaisse|intcomma }} MAD</td>
+                                <td class="text-end text-danger">{{ adj.reste_a_encaisser|intcomma }} MAD</td>
+                                <td>
+                                    {% if adj.acheve %}
+                                    <span class="badge bg-success">{% trans "Oui" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{% trans "Non" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if adj.solde %}
+                                    <span class="badge bg-success">{% trans "Oui" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{% trans "Non" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1 align-items-center" onclick="event.stopPropagation();">
+                                        {% if not adj.est_annule %}
+                                        <a href="{% url 'marches:aoadjuge_update' adj.pk %}?tab=adjudications" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                            <i class="fa-solid fa-pencil text-primary"></i>
+                                        </a>
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:aoadjuge_delete' adj.pk %}?tab=adjudications" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de ce marché ?" %}')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-ban text-warning"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% else %}
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:aoadjuge_restore' adj.pk %}?tab=adjudications" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-rotate-left text-success"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Panneau inférieur de Détail Décomptes par Marché -->
+        <div class="row d-none" id="marketDecomptesSection">
+            <!-- Table des décomptes (à gauche) -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-0">
+                        <h5 class="card-title mb-0 text-dark fw-bold">
+                            <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>
+                            {% trans "Table des décomptes/situations" %}
+                        </h5>
+                        <a href="{% url 'marches:decompte_create' %}?tab=adjudications" class="btn btn-sm btn-primary" id="btnCreateDecompte">
+                            <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Créer un Décompte" %}
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle w-100">
+                                <thead style="background-color: #2e75b6; color: white;">
+                                    <tr>
+                                        <th class="text-center" style="width: 120px;">{% trans "Numéro décompte" %}</th>
+                                        <th>{% trans "Date décompte" %}</th>
+                                        <th class="text-end">{% trans "Montant décompte" %}</th>
+                                        <th>{% trans "Pièces décompte" %}</th>
+                                        <th>{% trans "Document" %}</th>
+                                        <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="marketDecomptesBody">
+                                    <!-- Dynamically populated via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Objet du marché sélectionné (à droite) -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 h-100" style="background-color: #e2effd; border: 1px solid #b4d8fd !important;">
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <i class="fa-solid fa-circle-info text-primary me-2"></i>
+                            {% trans "Objet du marché sélectionné" %}
+                        </h6>
+                        <div class="p-3 bg-white rounded border flex-grow-1" id="selectedMarketObjet" style="font-size: 0.95rem; line-height: 1.6; color: #333; overflow-y: auto; max-height: 250px; min-height: 150px;">
+                            <!-- Dynamique -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── TAB 3: CAUTIONS (Caution) ── -->
+    {% if can_view_cautions %}
+    <div class="tab-pane fade {% if request.GET.tab == 'cautions' %}show active{% endif %}" id="cautions" role="tabpanel" aria-labelledby="cautions-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Registre des Cautions Bancaires émises" %}</h5>
+                <div>
+                    <a href="{% url 'marches:caution_create' %}?tab=cautions" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Déposer une Caution" %}
+                    </a>
+                    {% if has_cancel_perm %}
+                        {% if afficher_annules %}
+                        <a href="?tab=cautions" class="btn btn-sm btn-outline-secondary shadow-sm ms-2">
+                            <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+                        </a>
+                        {% else %}
+                        <a href="?tab=cautions&afficher_annules=on" class="btn btn-sm btn-outline-warning shadow-sm ms-2">
+                            <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Zone de Filtrage Cautions -->
+                <form method="get" class="row g-3 mb-4 align-items-end">
+                    <input type="hidden" name="tab" value="cautions">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Caution du" %}</label>
+                        <div class="input-group">
+                            <input type="date" name="caution_du" class="form-control" value="{{ request.GET.caution_du }}">
+                            <span class="input-group-text">{% trans "Au" %}</span>
+                            <input type="date" name="caution_au" class="form-control" value="{{ request.GET.caution_au }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">{% trans "Type caution" %}</label>
+                        <select name="type_caution" class="form-select">
+                            <option value="">{% trans "Tous" %}</option>
+                            {% for val, label in type_caution_choices %}
+                            <option value="{{ val }}" {% if request.GET.type_caution == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small text-secondary">{% trans "NUMERO" %}</label>
+                        <input type="text" name="numero_caution" class="form-control" placeholder="Numéro..." value="{{ request.GET.numero_caution }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small text-secondary">{% trans "CLIENT" %}</label>
+                        <input type="text" name="client_caution" class="form-control" placeholder="Client..." value="{{ request.GET.client_caution }}">
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                        <a href="?tab=cautions" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </a>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead style="background-color: #2e75b6; color: white;">
+                            <tr>
+                                <th>{% trans "Numéro caution" %}</th>
+                                <th>{% trans "Date caution" %}</th>
+                                <th>{% trans "Type caution" %}</th>
+                                <th class="text-end">{% trans "Montant" %}</th>
+                                <th>{% trans "N° appel d'offre" %}</th>
+                                <th>{% trans "N° marché ou BC" %}</th>
+                                <th>{% trans "client" %}</th>
+                                <th>{% trans "Objet" %}</th>
+                                <th class="text-center">{% trans "Renvoyée banque" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for caution in cautions %}
+                            <tr {% if caution.est_annule %}style="opacity: 0.6; background-color: #f8d7da !important;" class="text-muted text-decoration-line-through"{% endif %}>
+                                <td class="fw-bold">{{ caution.numero_caution|default:"—" }}</td>
+                                <td>{{ caution.date_depot|date:"d/m/Y" }}</td>
+                                <td>{{ caution.get_type_caution_display }}</td>
+                                <td class="text-end fw-bold text-primary">{{ caution.montant|intcomma }} MAD</td>
+                                <td>
+                                    {% if caution.num_ao %}
+                                    <code>{{ caution.num_ao }}</code>
+                                    {% elif caution.ao_soumission %}
+                                    <code>{{ caution.ao_soumission.reference_ao }}</code>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if caution.num_marche_bc %}
+                                    <code>{{ caution.num_marche_bc }}</code>
+                                    {% elif caution.ao_adjuge %}
+                                    <code>{{ caution.ao_adjuge.num_marche_bc }}</code>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold text-dark">
+                                    {% if caution.client %}
+                                    {{ caution.client }}
+                                    {% elif caution.ao_soumission %}
+                                    {{ caution.ao_soumission.client.nom }}
+                                    {% elif caution.ao_adjuge %}
+                                    {{ caution.ao_adjuge.client.nom }}
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if caution.objet %}
+                                    {{ caution.objet|truncatechars:35 }}
+                                    {% elif caution.ao_soumission %}
+                                    {{ caution.ao_soumission.objet|truncatechars:35 }}
+                                    {% elif caution.ao_adjuge %}
+                                    {{ caution.ao_adjuge.objet|truncatechars:35 }}
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if caution.renvoyee_banque %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">{% trans "Oui" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{% trans "Non" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1 align-items-center">
+                                        {% if not caution.est_annule %}
+                                        <a href="{% url 'marches:caution_update' caution.pk %}?tab=cautions" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                            <i class="fa-solid fa-pencil text-primary"></i>
+                                        </a>
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:caution_delete' caution.pk %}?tab=cautions" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de cette caution ?" %}')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-ban text-warning"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% else %}
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:caution_restore' caution.pk %}?tab=cautions" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-rotate-left text-success"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── TAB 4: DÉCOMPTES ── -->
+    {% if can_view_decomptes %}
+    <div class="tab-pane fade {% if request.GET.tab == 'decomptes' %}show active{% endif %}" id="decomptes" role="tabpanel" aria-labelledby="decomptes-tab">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">{% trans "Situations de Travaux & Décomptes" %}</h5>
+                <div>
+                    <a href="{% url 'marches:decompte_create' %}?tab=decomptes" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-plus-circle me-1"></i> {% trans "Créer un Décompte" %}
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle w-100 datatable">
+                        <thead style="background-color: #2e75b6; color: white;">
+                            <tr>
+                                <th>{% trans "Référence" %}</th>
+                                <th>{% trans "Dossier" %}</th>
+                                <th>{% trans "Décompte N°" %}</th>
+                                <th>{% trans "Date" %}</th>
+                                <th class="text-end">{% trans "Montant H.T." %}</th>
+                                <th class="text-end">{% trans "Montant T.T.C." %}</th>
+                                <th>{% trans "Statut" %}</th>
+                                <th class="text-end" style="width: 80px;">{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dec in decomptes %}
+                            <tr {% if dec.est_annule %}class="table-danger" style="text-decoration: line-through;"{% endif %}>
+                                <td><strong>{{ dec.reference }}</strong></td>
+                                <td>{{ dec.dossier.reference }}</td>
+                                <td class="text-center"><span class="badge bg-secondary">{{ dec.numero_decompte }}</span></td>
+                                <td>{{ dec.date_decompte|date:"d/m/Y" }}</td>
+                                <td class="text-end fw-semibold">{{ dec.montant_ht|intcomma }} MAD</td>
+                                <td class="text-end fw-bold text-primary">{{ dec.montant_ttc|intcomma }} MAD</td>
+                                <td>
+                                    {% if dec.est_annule %}
+                                    <span class="badge bg-danger">{% trans "Annulé" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{% trans "Actif" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1 align-items-center">
+                                        {% if not dec.est_annule %}
+                                        <a href="{% url 'marches:decompte_update' dec.pk %}?tab=decomptes" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                            <i class="fa-solid fa-pencil text-primary"></i>
+                                        </a>
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:decompte_delete' dec.pk %}?tab=decomptes" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de ce décompte ?" %}')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-ban text-warning"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% else %}
+                                        {% if has_cancel_perm %}
+                                        <form method="post" action="{% url 'marches:decompte_restore' dec.pk %}?tab=decomptes" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}" style="background: none; border: none; padding: 0; vertical-align: middle;">
+                                                <i class="fa-solid fa-rotate-left text-success"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        var table = $('.datatable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[0, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        // Gérer le switch automatique vers l'onglet actif si passé en URL parameter (?tab=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab');
+        if (activeTab) {
+            const tabButton = document.querySelector(`#aoTabs button[data-bs-target="#${activeTab}"]`);
+            if (tabButton) {
+                bootstrap.Tab.getOrCreateInstance(tabButton).show();
+            }
+        }
+
+        // Selection de ligne marché adjugé (Master-Detail)
+        var adjTable = $('#adjudicationsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        $('#adjudicationsTable tbody').on('click', 'tr.selectable-market-row', function () {
+            if ($(this).hasClass('table-primary')) {
+                $(this).removeClass('table-primary');
+                $('#marketDecomptesSection').addClass('d-none');
+            } else {
+                adjTable.$('tr.table-primary').removeClass('table-primary');
+                $(this).addClass('table-primary');
+
+                var id = $(this).data('id');
+                var objet = $(this).data('objet') || "—";
+
+                // Update selected market object preview
+                $('#selectedMarketObjet').text(objet);
+
+                // Update create button link
+                var createUrl = "{% url 'marches:decompte_create' %}?ao_adjuge_id=" + id + "&tab=adjudications";
+                $('#btnCreateDecompte').attr('href', createUrl);
+
+                // Charger les décomptes en AJAX
+                $.ajax({
+                    url: "{% url 'marches:ajax_load_decompte_details' %}",
+                    data: { 'ao_adjuge_id': id },
+                    success: function(data) {
+                        $('#marketDecomptesBody').html(data);
+                        $('#marketDecomptesSection').removeClass('d-none');
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

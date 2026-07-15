@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}{% trans "Nouvelle Évaluation" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Marchés" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'marches:resultatbc_list' %}">{% trans "Enquêtes Client" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Nouvelle Évaluation" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-solid fa-face-smile text-primary me-2"></i>
+        {% trans "Enregistrer une Évaluation Client" %}
+    </h1>
+    <p class="page-subtitle">{% trans "Mesurez la satisfaction globale après exécution de la commande" %}</p>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            {% crispy form %}
+            
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-save me-1"></i>
+                    {% trans "Enregistrer l'évaluation" %}
+                </button>
+                <a href="{% url 'marches:resultatbc_list' %}" class="btn btn-outline-secondary">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

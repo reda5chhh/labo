@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gestion des Utilisateurs" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Service Informatique" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Utilisateurs" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary">
+                <i class="fa-solid fa-users-gear me-2"></i>{% trans "Gestion des Utilisateurs" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Créer, modifier et gérer les comptes utilisateurs de l'application" %}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'gestion_droits_acces:droits_matrix' %}" class="btn btn-outline-primary shadow-sm">
+                <i class="fa-solid fa-shield-halved me-1"></i>{% trans "Droits d'accès" %}
+            </a>
+            <a href="{% url 'gestion_droits_acces:user_create' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-user-plus me-1"></i>{% trans "Nouvel Utilisateur" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="usersTable">
+                <thead style="background-color: #e6edf7; color: #1a3052;">
+                    <tr>
+                        <th>{% trans "Nom" %}</th>
+                        <th>{% trans "Username" %}</th>
+                        <th>{% trans "Email" %}</th>
+                        <th>{% trans "Fonction" %}</th>
+                        <th class="text-center">{% trans "Rôle" %}</th>
+                        <th class="text-center">{% trans "Statut" %}</th>
+                        <th class="text-end" style="width:160px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr class="{% if not user.is_active %}table-secondary text-muted{% endif %}">
+                        <td class="fw-semibold">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-circle bg-primary text-white" style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;">
+                                    {{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
+                                </div>
+                                {{ user.get_full_name|default:user.username }}
+                            </div>
+                        </td>
+                        <td><code class="text-muted">{{ user.username }}</code></td>
+                        <td>{{ user.email|default:"—" }}</td>
+                        <td>{{ user.fonction|default:"—" }}</td>
+                        <td class="text-center">
+                            {% if user.is_superuser %}
+                            <span class="badge bg-danger">Superuser</span>
+                            {% elif user.est_admin %}
+                            <span class="badge bg-warning text-dark">Admin</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Utilisateur</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if user.is_active %}
+                            <span class="badge bg-success"><i class="fa-solid fa-circle me-1" style="font-size:.5rem;"></i>Actif</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="fa-solid fa-circle me-1" style="font-size:.5rem;"></i>Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{% url 'gestion_droits_acces:user_update' user.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                <a href="{% url 'gestion_droits_acces:droits_matrix' %}?user_id={{ user.pk }}" class="btn btn-sm btn-icon" title="{% trans 'Gérer les droits' %}">
+                                    <i class="fa-solid fa-shield-halved text-info"></i>
+                                </a>
+                                {% if not user.is_superuser %}
+                                <form method="post" action="{% url 'gestion_droits_acces:user_toggle_active' user.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% if user.is_active %}Désactiver{% else %}Activer{% endif %}">
+                                        {% if user.is_active %}
+                                        <i class="fa-solid fa-toggle-on text-success"></i>
+                                        {% else %}
+                                        <i class="fa-solid fa-toggle-off text-danger"></i>
+                                        {% endif %}
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-users fa-2x mb-2 d-block"></i>
+                            {% trans "Aucun utilisateur trouvé" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

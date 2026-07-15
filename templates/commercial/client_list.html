@@ -19,14 +19,28 @@
             <p class="page-subtitle text-muted">{% trans "Liste de tous les clients et partenaires du laboratoire" %}</p>
         </div>
         <div>
+            {% if perms_module.peut_ajouter %}
             <a href="{% url 'commercial:client_create' %}" class="btn btn-primary shadow-sm">
                 <i class="fa-solid fa-plus-circle me-1"></i>
                 {% trans "Nouveau Client" %}
             </a>
+            {% endif %}
+            {% if perms_module.peut_annuler %}
+                {% if afficher_annules %}
+                <a href="{% url 'commercial:client_list' %}" class="btn btn-outline-secondary shadow-sm ms-2">
+                    <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+                </a>
+                {% else %}
+                <a href="?afficher_annules=1" class="btn btn-outline-warning shadow-sm ms-2">
+                    <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+                </a>
+                {% endif %}
+            {% endif %}
         </div>
     </div>
 </div>
 
+{% if perms_module.peut_voir %}
 <!-- FILTERS CONTAINER -->
 <div class="card shadow-sm border-0 mb-4 bg-light">
     <div class="card-body">
@@ -50,8 +64,11 @@
         </form>
     </div>
 </div>
+{% endif %}
+
 
 <!-- TABLE -->
+{% if perms_module.peut_voir %}
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="table-responsive">
@@ -66,36 +83,62 @@
                         <th>{% trans "IF" %}</th>
                         <th>{% trans "ICE" %}</th>
                         <th>{% trans "mle" %}</th>
+                        <th>{% trans "Statut" %}</th>
                         <th class="text-end" style="width: 120px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for client in clients %}
-                    <tr>
+                    <tr class="{% if client.est_annule %}table-danger text-muted{% endif %}">
                         <td class="fw-bold text-secondary">{{ client.id }}</td>
-                        <td class="fw-semibold text-dark">{{ client.nom }}</td>
+                        <td class="fw-semibold {% if not client.est_annule %}text-dark{% endif %}">
+                            {{ client.nom }}
+                            {% if client.est_annule %}
+                            <span class="badge bg-danger ms-1">{% trans "ANNULÉ" %}</span>
+                            {% endif %}
+                        </td>
                         <td>{{ client.ville|default:"-" }}</td>
                         <td>{{ client.telephone }}</td>
                         <td>{{ client.telephone_2|default:"-" }}</td>
                         <td>{{ client.if_fiscal|default:"-" }}</td>
                         <td><code class="text-muted">{{ client.ice|default:"-" }}</code></td>
                         <td>{{ client.mle|default:"-" }}</td>
+                        <td>
+                            {% if client.est_annule %}
+                            <span class="badge bg-danger">{% trans "Annulé" %}</span>
+                            {% if client.annule_le %}<small class="d-block text-muted">{{ client.annule_le|date:"d/m/Y" }}</small>{% endif %}
+                            {% else %}
+                            <span class="badge bg-success">{% trans "Actif" %}</span>
+                            {% endif %}
+                        </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-1">
+                                {% if not client.est_annule %}
                                 <a href="{% url 'commercial:client_update' client.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
                                     <i class="fa-solid fa-pencil text-primary"></i>
                                 </a>
-                                <a href="{% url 'commercial:client_delete' client.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Supprimer' %}">
-                                    <i class="fa-solid fa-trash text-danger"></i>
-                                </a>
+                                <form method="post" action="{% url 'commercial:client_delete' client.pk %}" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de ce client ?" %}')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}">
+                                        <i class="fa-solid fa-ban text-warning"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{% url 'commercial:client_restore' client.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}">
+                                        <i class="fa-solid fa-rotate-left text-success"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">
+                        <td colspan="10" class="text-center py-4 text-muted">
                             <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
-                            {% trans "Aucun client enregistré" %}
+                            {% if afficher_annules %}{% trans "Aucun client annulé" %}{% else %}{% trans "Aucun client enregistré" %}{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -104,6 +147,15 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body py-5 text-center text-muted">
+        <i class="fa-solid fa-eye-slash fa-3x mb-3 text-warning"></i>
+        <h5>{% trans "Accès aux données restreint" %}</h5>
+        <p class="mb-0">{% trans "Vous n'avez pas l'autorisation de voir la liste des clients." %}</p>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -116,7 +168,7 @@
             pageLength: 25,
             order: [[0, 'asc']],
             columnDefs: [
-                { orderable: false, targets: 8 }
+                { orderable: false, targets: [8, 9] }
             ],
             dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
                  "<'row'<'col-sm-12'tr>>" +

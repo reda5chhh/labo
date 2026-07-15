@@ -38,4 +38,34 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const devisSelect = document.getElementById('id_devis');
+    const clientSelect = document.getElementById('id_client');
+    const nomProjetInput = document.getElementById('id_nom_projet');
+
+    if (devisSelect) {
+        devisSelect.addEventListener('change', function() {
+            const devisId = this.value;
+            if (!devisId) return;
+
+            fetch(`/api/entity-info/devis/${devisId}/`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch devis data');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.client_id && clientSelect) {
+                        clientSelect.value = data.client_id;
+                    }
+                    if (data.objet && nomProjetInput) {
+                        nomProjetInput.value = data.objet;
+                    }
+                })
+                .catch(error => console.error('Error auto-populating devis:', error));
+        });
+    }
+});
+</script>
 {% endblock %}

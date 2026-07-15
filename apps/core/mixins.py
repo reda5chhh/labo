@@ -33,11 +33,14 @@ class AuditableMixin:
         Retourne:
             dict: Dictionnaire {nom_champ: valeur} de tous les champs.
         """
+        from django.db.models.fields.files import FieldFile
         result = {}
         for field in self._meta.fields:
             value = getattr(self, field.name)
             # Convertir les types non-JSON-sérialisables
-            if hasattr(value, 'isoformat'):
+            if isinstance(value, FieldFile):
+                value = value.name if value else None
+            elif hasattr(value, 'isoformat'):
                 value = value.isoformat()
             elif hasattr(value, 'pk'):
                 value = value.pk
@@ -89,28 +92,61 @@ class AuditableMixin:
 
     def delete(self, *args, **kwargs):
         """
-        Surcharge de delete() pour créer un AuditLog DELETE
-        avec une copie de l'état de l'objet avant suppression.
+        Annulation logique (Soft Delete) : marque l'objet comme annulé
+        sans le supprimer physiquement de la base de données.
+        Enregistre un AuditLog CANCEL.
+        """
+        from django.utils import timezone
+        from apps.core.middleware import get_current_user, get_current_ip
+        from apps.core.models import AuditLog
+
+        user = get_current_user()
+        ip = get_current_ip()
+        old_value = self._get_field_dict()
+
+        # Soft delete : on marque l'objet comme annulé
+        self.est_annule = True
+        self.annule_le = timezone.now()
+        self.annule_par = user
+        # Appel de save() directement sur la base (bypass AuditableMixin.save)
+        super(type(self), self).save(update_fields=['est_annule', 'annule_le', 'annule_par'])
+
+        AuditLog.log(
+            user=user,
+            action_type=AuditLog.ActionType.CANCEL,
+            model_name=self.__class__.__name__,
+            object_id=self.pk,
+            object_repr=str(self),
+            old_value=old_value,
+            new_value=self._get_field_dict(),
+            ip_address=ip,
+        )
+
+    def restore(self):
+        """
+        Restauration : réactive un enregistrement annulé.
+        Enregistre un AuditLog RESTORE.
         """
         from apps.core.middleware import get_current_user, get_current_ip
         from apps.core.models import AuditLog
 
         user = get_current_user()
         ip = get_current_ip()
-
         old_value = self._get_field_dict()
-        pk = self.pk
-        repr_str = str(self)
 
-        super().delete(*args, **kwargs)
+        self.est_annule = False
+        self.annule_le = None
+        self.annule_par = None
+        super(type(self), self).save(update_fields=['est_annule', 'annule_le', 'annule_par'])
 
         AuditLog.log(
             user=user,
-            action_type=AuditLog.ActionType.DELETE,
+            action_type=AuditLog.ActionType.RESTORE,
             model_name=self.__class__.__name__,
-            object_id=pk,
-            object_repr=repr_str,
+            object_id=self.pk,
+            object_repr=str(self),
             old_value=old_value,
+            new_value=self._get_field_dict(),
             ip_address=ip,
         )
 
@@ -157,14 +193,14 @@ class AdminRequiredMixin(LaboCOSLoginRequiredMixin, UserPassesTestMixin):
 
 class ModulePermissionMixin(LaboCOSLoginRequiredMixin):
     """
-    Mixin vérifiant les droits d'accès aux modules via DroitAccesApp.
+    Mixin vérifiant les droits d'accès aux modules via DroitAcces.
 
     Usage dans une vue :
         class MaVue(ModulePermissionMixin, ListView):
             module_name = 'commercial'
-            action_name = 'devis'
+            action_name = 'view'
     """
-    module_name = None  # Nom du service dans DroitAccesApp
+    module_name = None  # Nom du service/module dans DroitAcces
     action_name = None  # Nom de l'action (ex: 'view', 'add', 'edit', 'delete')
 
     def dispatch(self, request, *args, **kwargs):
@@ -175,6 +211,95 @@ class ModulePermissionMixin(LaboCOSLoginRequiredMixin):
         if request.user.is_superuser or request.user.est_admin:
             return super().dispatch(request, *args, **kwargs)
 
-        # Vérification des droits (implémentée dans Phase 11)
-        # Pour l'instant, tous les utilisateurs connectés ont accès
+        if not self.module_name:
+            return super().dispatch(request, *args, **kwargs)
+
+        # Vérification des droits d'accès
+        from django.db.models import Q
+        from apps.gestion_droits_acces.models import DroitAcces
+
+        action = self.action_name
+        is_list_or_dashboard = (
+            hasattr(self, 'object_list') or 
+            self.__class__.__name__.endswith('ListView') or 
+            self.__class__.__name__.endswith('TemplateView')
+        )
+
+        if action == 'view':
+            if is_list_or_dashboard:
+                # L'utilisateur doit avoir au moins une permission pour voir la page/tableau de bord
+                has_perm = DroitAcces.objects.filter(
+                    Q(peut_voir=True) | Q(peut_ajouter=True) | Q(peut_modifier=True) | Q(peut_annuler=True),
+                    user=request.user,
+                    module=self.module_name
+                ).exists()
+            else:
+                # Les vues de détails nécessitent le droit 'voir'
+                has_perm = DroitAcces.objects.filter(
+                    user=request.user,
+                    module=self.module_name,
+                    peut_voir=True
+                ).exists()
+        else:
+            perm_field = 'peut_voir'
+            if action == 'add':
+                perm_field = 'peut_ajouter'
+            elif action == 'edit':
+                perm_field = 'peut_modifier'
+            elif action in ('delete', 'cancel'):
+                perm_field = 'peut_annuler'
+
+            has_perm = DroitAcces.objects.filter(
+                user=request.user,
+                module=self.module_name,
+                **{perm_field: True}
+            ).exists()
+
+        if not has_perm:
+            return self.handle_no_permission()
+
         return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        # Sécurité supplémentaire au niveau de la base de données
+        qs = super().get_queryset()
+        if self.module_name:
+            if not (self.request.user.is_superuser or self.request.user.est_admin):
+                from apps.gestion_droits_acces.models import DroitAcces
+                has_view = DroitAcces.objects.filter(
+                    user=self.request.user,
+                    module=self.module_name,
+                    peut_voir=True
+                ).exists()
+                if not has_view:
+                    return qs.none()
+        return qs
+
+
+    def get_context_data(self, **kwargs):
+        context = {}
+        if hasattr(super(), 'get_context_data'):
+            context = super().get_context_data(**kwargs)
+        
+        if self.module_name:
+            if self.request.user.is_superuser or self.request.user.est_admin:
+                class AdminDroit:
+                    peut_voir = True
+                    peut_ajouter = True
+                    peut_modifier = True
+                    peut_annuler = True
+                context['perms_module'] = AdminDroit()
+            else:
+                from apps.gestion_droits_acces.models import DroitAcces
+                try:
+                    droit = DroitAcces.objects.get(user=self.request.user, module=self.module_name)
+                    context['perms_module'] = droit
+                except DroitAcces.DoesNotExist:
+                    class DummyDroit:
+                        peut_voir = False
+                        peut_ajouter = False
+                        peut_modifier = False
+                        peut_annuler = False
+                    context['perms_module'] = DummyDroit()
+        return context
+

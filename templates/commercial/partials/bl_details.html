@@ -1,0 +1,15 @@
+{% load i18n %}
+{% for detail in details %}
+<tr>
+    <td class="fw-semibold text-dark">{{ detail.designation }}</td>
+    <td class="fw-bold">{{ detail.bon_livraison.reference }}</td>
+    <td class="text-center fw-bold">{{ detail.quantite|floatformat:0 }}</td>
+    <td>{{ detail.observations|default:"—" }}</td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="4" class="text-center py-3 text-muted">
+        {% trans "Aucun détail pour ce bon de livraison" %}
+    </td>
+</tr>
+{% endfor %}

@@ -10,19 +10,18 @@ from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 from django.forms import inlineformset_factory
 from django.views.generic import (
-    ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView, View
+    ListView, DetailView, CreateView, UpdateView, TemplateView, View
 )
+from django.db.models import Q
 
 from apps.core.mixins import ModulePermissionMixin
 from .models import (
     Client, RevueDemande, Devis, Dossier, Convention,
-    AOSoumission, AOAdjuge, Decompte, Caution,
-    BonLivraison, DetailBonLivraison, ResultatBC, DetailDevis
+    BonLivraison, DetailBonLivraison, DetailDevis
 )
 from .forms import (
     ClientForm, RevueDemandeForm, DevisForm, DossierForm, ConventionForm,
-    AOSoumissionForm, AOAdjugeForm, DecompteForm, CautionForm,
-    BonLivraisonForm, DetailBonLivraisonForm, ResultatBCForm, DetailDevisForm
+    BonLivraisonForm, DetailBonLivraisonForm, DetailDevisForm
 )
 
 # Formset en ligne pour Bon de Livraison et ses lignes de détail
@@ -45,6 +44,45 @@ DetailDevisFormSet = inlineformset_factory(
 
 
 # ============================================================
+# Vues génériques Annulation / Restauration (Soft Delete)
+# ============================================================
+
+class AnnulerView(ModulePermissionMixin, View):
+    """
+    Vue générique d'annulation (soft delete).
+    Utilise model, success_url, et le message de succès définis dans la sous-classe.
+    """
+    model = None
+    success_url = None
+    module_name = 'commercial'
+    action_name = 'delete'
+    success_message = _('L\'enregistrement a été annulé.')
+
+    def post(self, request, *args, **kwargs):
+        obj = get_object_or_404(self.model.objects_all, pk=kwargs['pk'])
+        obj.delete()  # Soft delete via AuditableMixin
+        messages.warning(request, self.success_message)
+        return redirect(self.success_url)
+
+
+class RestaurerView(ModulePermissionMixin, View):
+    """
+    Vue générique de restauration d'un enregistrement annulé.
+    """
+    model = None
+    success_url = None
+    module_name = 'commercial'
+    action_name = 'delete'
+    success_message = _('L\'enregistrement a été restauré.')
+
+    def post(self, request, *args, **kwargs):
+        obj = get_object_or_404(self.model.objects_all, pk=kwargs['pk'])
+        obj.restore()
+        messages.success(request, self.success_message)
+        return redirect(self.success_url)
+
+
+# ============================================================
 # Vues Client
 # ============================================================
 
@@ -52,11 +90,26 @@ class ClientListView(ModulePermissionMixin, ListView):
     model = Client
     template_name = 'commercial/client_list.html'
     context_object_name = 'clients'
-    module_name = 'commercial'
+    module_name = 'client'
     action_name = 'view'
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # Vérification si l'utilisateur a le droit d'annuler pour afficher les annulés
+        has_cancel_perm = self.request.user.is_superuser or self.request.user.est_admin
+        if not has_cancel_perm:
+            from apps.gestion_droits_acces.models import DroitAcces
+            has_cancel_perm = DroitAcces.objects.filter(
+                user=self.request.user,
+                module=self.module_name,
+                peut_annuler=True
+            ).exists()
+
+        afficher_annules = self.request.GET.get('afficher_annules')
+        if afficher_annules and has_cancel_perm:
+            qs = Client.objects_all.filter(est_annule=True)
+        else:
+            qs = Client.objects.all()
+
         nom_contient = self.request.GET.get('nom_contient')
         nom_commence = self.request.GET.get('nom_commence')
         if nom_contient:
@@ -65,13 +118,19 @@ class ClientListView(ModulePermissionMixin, ListView):
             qs = qs.filter(nom__istartswith=nom_commence)
         return qs
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['afficher_annules'] = bool(self.request.GET.get('afficher_annules'))
+        return context
+
+
 
 class ClientCreateView(ModulePermissionMixin, CreateView):
     model = Client
     form_class = ClientForm
     template_name = 'commercial/client_form.html'
     success_url = reverse_lazy('commercial:client_list')
-    module_name = 'commercial'
+    module_name = 'client'
     action_name = 'add'
 
     def form_valid(self, form):
@@ -83,7 +142,7 @@ class ClientUpdateView(ModulePermissionMixin, UpdateView):
     form_class = ClientForm
     template_name = 'commercial/client_form.html'
     success_url = reverse_lazy('commercial:client_list')
-    module_name = 'commercial'
+    module_name = 'client'
     action_name = 'edit'
 
     def form_valid(self, form):
@@ -91,12 +150,18 @@ class ClientUpdateView(ModulePermissionMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ClientDeleteView(ModulePermissionMixin, DeleteView):
+class ClientAnnulerView(AnnulerView):
     model = Client
-    template_name = 'commercial/client_confirm_delete.html'
+    module_name = 'client'
     success_url = reverse_lazy('commercial:client_list')
-    module_name = 'commercial'
-    action_name = 'delete'
+    success_message = _('Le client a été annulé.')
+
+
+class ClientRestaurerView(RestaurerView):
+    model = Client
+    module_name = 'client'
+    success_url = reverse_lazy('commercial:client_list')
+    success_message = _('Le client a été restauré.')
 
 
 # ============================================================
@@ -107,11 +172,26 @@ class RevueDemandeListView(ModulePermissionMixin, ListView):
     model = RevueDemande
     template_name = 'commercial/revuedemande_list.html'
     context_object_name = 'revues'
-    module_name = 'commercial'
+    module_name = 'revue_demande'
     action_name = 'view'
 
     def get_queryset(self):
-        qs = RevueDemande.objects.select_related('client', 'dossier')
+        has_cancel_perm = self.request.user.is_superuser or self.request.user.est_admin
+        if not has_cancel_perm:
+            from apps.gestion_droits_acces.models import DroitAcces
+            has_cancel_perm = DroitAcces.objects.filter(
+                user=self.request.user,
+                module=self.module_name,
+                peut_annuler=True
+            ).exists()
+
+        afficher_annules = self.request.GET.get('afficher_annules')
+        if afficher_annules and has_cancel_perm:
+            qs = RevueDemande.objects_all.filter(est_annule=True)
+        else:
+            qs = RevueDemande.objects.all()
+
+        qs = qs.select_related('client', 'dossier')
         
         client_id = self.request.GET.get('client')
         ref = self.request.GET.get('ref')
@@ -143,6 +223,7 @@ class RevueDemandeListView(ModulePermissionMixin, ListView):
         context['clients_list'] = Client.objects.all().order_by('nom')
         context['dossiers_list'] = Dossier.objects.all().order_by('reference')
         context['devis_list'] = Devis.objects.select_related('client', 'revue_demande').all().order_by('-date_devis')
+        context['afficher_annules'] = bool(self.request.GET.get('afficher_annules'))
         return context
 
 
@@ -151,7 +232,7 @@ class RevueDemandeCreateView(ModulePermissionMixin, CreateView):
     form_class = RevueDemandeForm
     template_name = 'commercial/revuedemande_form.html'
     success_url = reverse_lazy('commercial:revuedemande_list')
-    module_name = 'commercial'
+    module_name = 'revue_demande'
     action_name = 'add'
 
     def get_form_kwargs(self):
@@ -169,7 +250,7 @@ class RevueDemandeUpdateView(ModulePermissionMixin, UpdateView):
     form_class = RevueDemandeForm
     template_name = 'commercial/revuedemande_form.html'
     success_url = reverse_lazy('commercial:revuedemande_list')
-    module_name = 'commercial'
+    module_name = 'revue_demande'
     action_name = 'edit'
 
     def get_form_kwargs(self):
@@ -186,8 +267,22 @@ class RevueDemandePrintView(ModulePermissionMixin, DetailView):
     model = RevueDemande
     template_name = 'commercial/revuedemande_print.html'
     context_object_name = 'revue'
-    module_name = 'commercial'
+    module_name = 'revue_demande'
     action_name = 'view'
+
+
+class RevueDemandeAnnulerView(AnnulerView):
+    model = RevueDemande
+    module_name = 'revue_demande'
+    success_url = reverse_lazy('commercial:revuedemande_list')
+    success_message = _('La revue de demande a été annulée.')
+
+
+class RevueDemandeRestaurerView(RestaurerView):
+    model = RevueDemande
+    module_name = 'revue_demande'
+    success_url = reverse_lazy('commercial:revuedemande_list')
+    success_message = _('La revue de demande a été restaurée.')
 
 
 # ============================================================
@@ -198,11 +293,26 @@ class DevisListView(ModulePermissionMixin, ListView):
     model = Devis
     template_name = 'commercial/devis_list.html'
     context_object_name = 'devis_list'
-    module_name = 'commercial'
+    module_name = 'devis'
     action_name = 'view'
 
     def get_queryset(self):
-        queryset = Devis.objects.select_related('client', 'revue_demande').prefetch_related('dossiers')
+        has_cancel_perm = self.request.user.is_superuser or self.request.user.est_admin
+        if not has_cancel_perm:
+            from apps.gestion_droits_acces.models import DroitAcces
+            has_cancel_perm = DroitAcces.objects.filter(
+                user=self.request.user,
+                module=self.module_name,
+                peut_annuler=True
+            ).exists()
+
+        afficher_annules = self.request.GET.get('afficher_annules')
+        if afficher_annules and has_cancel_perm:
+            queryset = Devis.objects_all.filter(est_annule=True)
+        else:
+            queryset = Devis.objects.all()
+
+        queryset = queryset.select_related('client', 'revue_demande').prefetch_related('dossiers')
         
         # Filtres
         date_du = self.request.GET.get('date_du')
@@ -241,6 +351,7 @@ class DevisListView(ModulePermissionMixin, ListView):
         from apps.commercial.models import Client, Dossier
         context['clients'] = Client.objects.all().order_by('nom')
         context['dossiers'] = Dossier.objects.all().order_by('reference')
+        context['afficher_annules'] = bool(self.request.GET.get('afficher_annules'))
         return context
 
 
@@ -248,7 +359,7 @@ class DevisDetailView(ModulePermissionMixin, DetailView):
     model = Devis
     template_name = 'commercial/devis_detail.html'
     context_object_name = 'devis'
-    module_name = 'commercial'
+    module_name = 'devis'
     action_name = 'view'
 
 
@@ -257,7 +368,7 @@ class DevisCreateView(ModulePermissionMixin, CreateView):
     form_class = DevisForm
     template_name = 'commercial/devis_form.html'
     success_url = reverse_lazy('commercial:devis_list')
-    module_name = 'commercial'
+    module_name = 'devis'
     action_name = 'add'
 
     def get_context_data(self, **kwargs):
@@ -282,7 +393,7 @@ class DevisCreateView(ModulePermissionMixin, CreateView):
 
 
 class AffecterDossierDevisView(ModulePermissionMixin, View):
-    module_name = 'commercial'
+    module_name = 'devis'
     action_name = 'edit'
 
     def post(self, request, *args, **kwargs):
@@ -310,7 +421,7 @@ class AffecterDossierDevisView(ModulePermissionMixin, View):
 
 
 class DevisActionView(ModulePermissionMixin, View):
-    module_name = 'commercial'
+    module_name = 'devis'
     action_name = 'edit'
 
     def post(self, request, *args, **kwargs):
@@ -347,7 +458,7 @@ class DevisUpdateView(ModulePermissionMixin, UpdateView):
     form_class = DevisForm
     template_name = 'commercial/devis_form.html'
     success_url = reverse_lazy('commercial:devis_list')
-    module_name = 'commercial'
+    module_name = 'devis'
     action_name = 'edit'
 
     def get_context_data(self, **kwargs):
@@ -371,16 +482,18 @@ class DevisUpdateView(ModulePermissionMixin, UpdateView):
             return self.render_to_response(self.get_context_data(form=form))
 
 
-class DevisDeleteView(ModulePermissionMixin, DeleteView):
+class DevisAnnulerView(AnnulerView):
     model = Devis
-    template_name = 'commercial/devis_confirm_delete.html'
+    module_name = 'devis'
     success_url = reverse_lazy('commercial:devis_list')
-    module_name = 'commercial'
-    action_name = 'delete'
+    success_message = _('Le devis a été annulé.')
 
-    def post(self, request, *args, **kwargs):
-        messages.success(self.request, _("Le devis a été supprimé."))
-        return super().post(request, *args, **kwargs)
+
+class DevisRestaurerView(RestaurerView):
+    model = Devis
+    module_name = 'devis'
+    success_url = reverse_lazy('commercial:devis_list')
+    success_message = _('Le devis a été restauré.')
 
 
 # ============================================================
@@ -391,11 +504,26 @@ class DossierListView(ModulePermissionMixin, ListView):
     model = Dossier
     template_name = 'commercial/dossier_list.html'
     context_object_name = 'dossiers'
-    module_name = 'commercial'
+    module_name = 'dossier'
     action_name = 'view'
 
     def get_queryset(self):
-        qs = Dossier.objects.select_related('client', 'devis', 'chef_projet')
+        has_cancel_perm = self.request.user.is_superuser or self.request.user.est_admin
+        if not has_cancel_perm:
+            from apps.gestion_droits_acces.models import DroitAcces
+            has_cancel_perm = DroitAcces.objects.filter(
+                user=self.request.user,
+                module=self.module_name,
+                peut_annuler=True
+            ).exists()
+
+        afficher_annules = self.request.GET.get('afficher_annules')
+        if afficher_annules and has_cancel_perm:
+            qs = Dossier.objects_all.filter(est_annule=True)
+        else:
+            qs = Dossier.objects.all()
+
+        qs = qs.select_related('client', 'devis', 'chef_projet')
         
         # Filtres
         date_du = self.request.GET.get('date_du')
@@ -437,6 +565,7 @@ class DossierListView(ModulePermissionMixin, ListView):
         context['users_list'] = User.objects.all().order_by('username')
         context['type_client_choices'] = Client.ClientType.choices
         context['statut_choices'] = Dossier.Statut.choices
+        context['afficher_annules'] = bool(self.request.GET.get('afficher_annules'))
         return context
 
 
@@ -444,7 +573,7 @@ class DossierDetailView(ModulePermissionMixin, DetailView):
     model = Dossier
     template_name = 'commercial/dossier_detail.html'
     context_object_name = 'dossier'
-    module_name = 'commercial'
+    module_name = 'dossier'
     action_name = 'view'
 
 
@@ -453,7 +582,7 @@ class DossierCreateView(ModulePermissionMixin, CreateView):
     form_class = DossierForm
     template_name = 'commercial/dossier_form.html'
     success_url = reverse_lazy('commercial:dossier_list')
-    module_name = 'commercial'
+    module_name = 'dossier'
     action_name = 'add'
 
     def form_valid(self, form):
@@ -466,7 +595,7 @@ class DossierUpdateView(ModulePermissionMixin, UpdateView):
     form_class = DossierForm
     template_name = 'commercial/dossier_form.html'
     success_url = reverse_lazy('commercial:dossier_list')
-    module_name = 'commercial'
+    module_name = 'dossier'
     action_name = 'edit'
 
     def form_valid(self, form):
@@ -474,16 +603,17 @@ class DossierUpdateView(ModulePermissionMixin, UpdateView):
         return super().form_valid(form)
 
 
-class DossierDeleteView(ModulePermissionMixin, DeleteView):
+class DossierAnnulerView(AnnulerView):
     model = Dossier
-    template_name = 'commercial/dossier_confirm_delete.html'
+    module_name = 'dossier'
     success_url = reverse_lazy('commercial:dossier_list')
-    module_name = 'commercial'
-    action_name = 'delete'
+    success_message = _('Le dossier a été annulé.')
 
-    def form_valid(self, form):
-        messages.success(self.request, _("Le dossier a été supprimé."))
-        return super().form_valid(form)
+class DossierRestaurerView(RestaurerView):
+    model = Dossier
+    module_name = 'dossier'
+    success_url = reverse_lazy('commercial:dossier_list')
+    success_message = _('Le dossier a été restauré.')
 
 
 # ============================================================
@@ -492,11 +622,76 @@ class ConventionListView(ModulePermissionMixin, ListView):
     model = Convention
     template_name = 'commercial/convention_list.html'
     context_object_name = 'conventions'
-    module_name = 'commercial'
+    module_name = 'convention'
     action_name = 'view'
 
     def get_queryset(self):
-        return Convention.objects.select_related('client')
+        has_cancel_perm = self.request.user.is_superuser or self.request.user.est_admin
+        if not has_cancel_perm:
+            from apps.gestion_droits_acces.models import DroitAcces
+            has_cancel_perm = DroitAcces.objects.filter(
+                user=self.request.user,
+                module=self.module_name,
+                peut_annuler=True
+            ).exists()
+
+        afficher_annules = self.request.GET.get('afficher_annules')
+        statut_annulation = self.request.GET.get('statut_annulation', 'en_cours')
+        if (afficher_annules or statut_annulation == 'annule') and has_cancel_perm:
+            qs = Convention.objects_all.filter(est_annule=True)
+        else:
+            qs = Convention.objects.all()
+
+        # Date debut filters
+        date_du = self.request.GET.get('date_du')
+        date_au = self.request.GET.get('date_au')
+        if date_du:
+            qs = qs.filter(date_debut__gte=date_du)
+        if date_au:
+            qs = qs.filter(date_debut__lte=date_au)
+
+        # N° Convention filter
+        n_convention = self.request.GET.get('n_convention')
+        if n_convention:
+            qs = qs.filter(reference__icontains=n_convention)
+
+        # Client filters
+        client_id = self.request.GET.get('client_id')
+        if client_id:
+            qs = qs.filter(client_id=client_id)
+        client_nom = self.request.GET.get('client_nom')
+        if client_nom:
+            qs = qs.filter(client__nom__icontains=client_nom)
+
+        # Dossier filters
+        dossier_id = self.request.GET.get('dossier_id')
+        if dossier_id:
+            from apps.commercial.models import Dossier
+            try:
+                dossier_obj = Dossier.objects.get(id=dossier_id)
+                qs = qs.filter(client=dossier_obj.client)
+            except Dossier.DoesNotExist:
+                pass
+        dossier_ref = self.request.GET.get('dossier_ref')
+        if dossier_ref:
+            qs = qs.filter(client__dossiers__reference__icontains=dossier_ref) | qs.filter(client__dossiers__nom_projet__icontains=dossier_ref)
+
+        # Validée par client filter: tous/oui/non
+        validee_par_client = self.request.GET.get('validee_par_client')
+        if validee_par_client == 'oui':
+            qs = qs.filter(validee_par_client=True)
+        elif validee_par_client == 'non':
+            qs = qs.filter(validee_par_client=False)
+
+        return qs.select_related('client').distinct()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from apps.commercial.models import Client, Dossier
+        context['clients_list'] = Client.objects.all()
+        context['dossiers_list'] = Dossier.objects.all()
+        context['afficher_annules'] = bool(self.request.GET.get('afficher_annules') or self.request.GET.get('statut_annulation') == 'annule')
+        return context
 
 
 class ConventionCreateView(ModulePermissionMixin, CreateView):
@@ -504,7 +699,7 @@ class ConventionCreateView(ModulePermissionMixin, CreateView):
     form_class = ConventionForm
     template_name = 'commercial/convention_form.html'
     success_url = reverse_lazy('commercial:convention_list')
-    module_name = 'commercial'
+    module_name = 'convention'
     action_name = 'add'
 
     def form_valid(self, form):
@@ -517,7 +712,7 @@ class ConventionUpdateView(ModulePermissionMixin, UpdateView):
     form_class = ConventionForm
     template_name = 'commercial/convention_form.html'
     success_url = reverse_lazy('commercial:convention_list')
-    module_name = 'commercial'
+    module_name = 'convention'
     action_name = 'edit'
 
     def form_valid(self, form):
@@ -529,186 +724,44 @@ class ConventionDetailView(ModulePermissionMixin, DetailView):
     model = Convention
     template_name = 'commercial/convention_detail.html'
     context_object_name = 'convention'
-    module_name = 'commercial'
+    module_name = 'convention'
     action_name = 'view'
 
 
-class ConventionDeleteView(ModulePermissionMixin, DeleteView):
+class ConventionAnnulerView(AnnulerView):
     model = Convention
-    template_name = 'commercial/convention_confirm_delete.html'
+    module_name = 'convention'
     success_url = reverse_lazy('commercial:convention_list')
-    module_name = 'commercial'
-    action_name = 'delete'
-
-    def form_valid(self, form):
-        messages.success(self.request, _("La convention a été supprimée."))
-        return super().form_valid(form)
+    success_message = _('La convention a été annulée.')
 
 
-# ============================================================
-# Vues Appels d'Offres, Cautions, Décomptes (Regroupés)
-# ============================================================
-
-class AOListView(ModulePermissionMixin, TemplateView):
-    template_name = 'commercial/ao_list.html'
-    module_name = 'commercial'
-    action_name = 'view'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['soumissions'] = AOSoumission.objects.select_related('client')
-        context['adjudications'] = AOAdjuge.objects.select_related('ao_soumission', 'ao_soumission__client')
-        context['cautions'] = Caution.objects.select_related('ao_soumission', 'ao_adjuge', 'ao_adjuge__ao_soumission')
-        context['decomptes'] = Decompte.objects.select_related('dossier', 'ao_adjuge', 'ao_adjuge__ao_soumission')
-        return context
+class ConventionRestaurerView(RestaurerView):
+    model = Convention
+    module_name = 'convention'
+    success_url = reverse_lazy('commercial:convention_list')
+    success_message = _('La convention a été restaurée.')
 
 
-# AOSoumission CRUD
-class AOSoumissionCreateView(ModulePermissionMixin, CreateView):
-    model = AOSoumission
-    form_class = AOSoumissionForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'add'
+class ConventionValiderView(ModulePermissionMixin, View):
+    module_name = 'convention'
+    action_name = 'modifier'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Créer un Appel d'Offres (Soumission)")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("Le dossier de soumission AO a été créé."))
-        return super().form_valid(form)
-
-
-class AOSoumissionUpdateView(ModulePermissionMixin, UpdateView):
-    model = AOSoumission
-    form_class = AOSoumissionForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'edit'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Modifier la soumission AO")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("Le dossier de soumission AO a été mis à jour."))
-        return super().form_valid(form)
+    def post(self, request, *args, **kwargs):
+        convention_id = request.POST.get('convention_id')
+        if convention_id:
+            try:
+                convention = Convention.objects.get(id=convention_id)
+                convention.validee_par_client = True
+                convention.save()
+                from django.contrib import messages
+                messages.success(request, _("La convention a été validée par le client avec succès."))
+            except Convention.DoesNotExist:
+                pass
+        return redirect('commercial:convention_list')
 
 
-# AOAdjuge CRUD
-class AOAdjugeCreateView(ModulePermissionMixin, CreateView):
-    model = AOAdjuge
-    form_class = AOAdjugeForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'add'
+# Vues de Marchés déplacées vers l'application marches
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Enregistrer un Marché Adjugé / Notifié")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("L'adjudication du marché a été enregistrée."))
-        return super().form_valid(form)
-
-
-class AOAdjugeUpdateView(ModulePermissionMixin, UpdateView):
-    model = AOAdjuge
-    form_class = AOAdjugeForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'edit'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Modifier le Marché Adjugé")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("Le marché adjugé a été mis à jour."))
-        return super().form_valid(form)
-
-
-# Caution CRUD
-class CautionCreateView(ModulePermissionMixin, CreateView):
-    model = Caution
-    form_class = CautionForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'add'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Déposer une Caution Bancaire")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("La caution bancaire a été enregistrée."))
-        return super().form_valid(form)
-
-
-class CautionUpdateView(ModulePermissionMixin, UpdateView):
-    model = Caution
-    form_class = CautionForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'edit'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Modifier la Caution Bancaire")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("La caution bancaire a été mise à jour."))
-        return super().form_valid(form)
-
-
-# Decompte CRUD
-class DecompteCreateView(ModulePermissionMixin, CreateView):
-    model = Decompte
-    form_class = DecompteForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'add'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Créer une situation / Décompte de travaux")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("Le décompte a été créé."))
-        return super().form_valid(form)
-
-
-class DecompteUpdateView(ModulePermissionMixin, UpdateView):
-    model = Decompte
-    form_class = DecompteForm
-    template_name = 'commercial/ao_form.html'
-    success_url = reverse_lazy('commercial:ao_list')
-    module_name = 'commercial'
-    action_name = 'edit'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titre'] = _("Modifier le décompte")
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, _("Le décompte a été mis à jour."))
-        return super().form_valid(form)
 
 
 # ============================================================
@@ -719,18 +772,97 @@ class BLListView(ModulePermissionMixin, ListView):
     model = BonLivraison
     template_name = 'commercial/bl_list.html'
     context_object_name = 'bls'
-    module_name = 'commercial'
+    module_name = 'bon_livraison'
     action_name = 'view'
 
     def get_queryset(self):
-        return BonLivraison.objects.select_related('dossier', 'dossier__client')
+        has_cancel_perm = self.request.user.is_superuser or self.request.user.est_admin
+        if not has_cancel_perm:
+            from apps.gestion_droits_acces.models import DroitAcces
+            has_cancel_perm = DroitAcces.objects.filter(
+                user=self.request.user,
+                module=self.module_name,
+                peut_annuler=True
+            ).exists()
+
+        afficher_annules = self.request.GET.get('afficher_annules')
+        if afficher_annules and has_cancel_perm:
+            qs = BonLivraison.objects_all.filter(est_annule=True)
+        else:
+            qs = BonLivraison.objects.all()
+
+        qs = qs.select_related('dossier', 'dossier__client')
+
+        # Apply advanced filters
+        client_id = self.request.GET.get('client_id')
+        if client_id:
+            qs = qs.filter(dossier__client_id=client_id)
+
+        recherche_txt = self.request.GET.get('recherche_txt')
+        if recherche_txt:
+            qs = qs.filter(
+                Q(reference__icontains=recherche_txt) | 
+                Q(destinataire__icontains=recherche_txt) | 
+                Q(dossier__client__nom__icontains=recherche_txt)
+            )
+
+        dossier_id = self.request.GET.get('dossier_id')
+        if dossier_id:
+            qs = qs.filter(dossier_id=dossier_id)
+
+        etat_dossier = self.request.GET.get('etat_dossier')
+        if etat_dossier:
+            qs = qs.filter(dossier__statut=etat_dossier)
+
+        # Accuse Date range
+        date_acc_du = self.request.GET.get('date_acc_du')
+        date_acc_au = self.request.GET.get('date_acc_au')
+        if date_acc_du:
+            qs = qs.filter(date_accuse__gte=date_acc_du)
+        if date_acc_au:
+            qs = qs.filter(date_accuse__lte=date_acc_au)
+
+        # Envoi Date range
+        date_env_du = self.request.GET.get('date_env_du')
+        date_env_au = self.request.GET.get('date_env_au')
+        if date_env_du:
+            qs = qs.filter(date_envoi__gte=date_env_du)
+        if date_env_au:
+            qs = qs.filter(date_envoi__lte=date_env_au)
+
+        # Statut envoi
+        statut_envoi = self.request.GET.get('statut_envoi')
+        if statut_envoi == 'envoye':
+            qs = qs.filter(envoye=True)
+        elif statut_envoi == 'non_envoye':
+            qs = qs.filter(envoye=False)
+
+        # Statut accuse
+        statut_accuse = self.request.GET.get('statut_accuse')
+        if statut_accuse == 'accuse':
+            qs = qs.filter(accuse=True)
+        elif statut_accuse == 'non_accuse':
+            qs = qs.filter(accuse=False)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['afficher_annules'] = bool(self.request.GET.get('afficher_annules'))
+        
+        # Load filter options
+        from apps.commercial.models import Client, Dossier
+        context['clients_list'] = Client.objects.all()
+        context['dossiers_list'] = Dossier.objects.all()
+        context['etat_dossier_choices'] = Dossier.Statut.choices
+        return context
 
 
 class BLDetailView(ModulePermissionMixin, DetailView):
     model = BonLivraison
     template_name = 'commercial/bl_detail.html'
     context_object_name = 'bl'
-    module_name = 'commercial'
+    module_name = 'bon_livraison'
     action_name = 'view'
 
 
@@ -739,8 +871,14 @@ class BLCreateView(ModulePermissionMixin, CreateView):
     form_class = BonLivraisonForm
     template_name = 'commercial/bl_form.html'
     success_url = reverse_lazy('commercial:bl_list')
-    module_name = 'commercial'
+    module_name = 'bon_livraison'
     action_name = 'add'
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if self.request.user:
+            initial['envoi_par'] = self.request.user.get_full_name() or self.request.user.username
+        return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -768,7 +906,7 @@ class BLUpdateView(ModulePermissionMixin, UpdateView):
     form_class = BonLivraisonForm
     template_name = 'commercial/bl_form.html'
     success_url = reverse_lazy('commercial:bl_list')
-    module_name = 'commercial'
+    module_name = 'bon_livraison'
     action_name = 'edit'
 
     def get_context_data(self, **kwargs):
@@ -792,44 +930,21 @@ class BLUpdateView(ModulePermissionMixin, UpdateView):
             return self.render_to_response(self.get_context_data(form=form))
 
 
-class BLDeleteView(ModulePermissionMixin, DeleteView):
+class BLAnnulerView(AnnulerView):
     model = BonLivraison
-    template_name = 'commercial/bl_confirm_delete.html'
+    module_name = 'bon_livraison'
     success_url = reverse_lazy('commercial:bl_list')
-    module_name = 'commercial'
-    action_name = 'delete'
-
-    def form_valid(self, form):
-        messages.success(self.request, _("Le bon de livraison a été supprimé."))
-        return super().form_valid(form)
+    success_message = _('Le bon de livraison a été annulé.')
 
 
-# ============================================================
-# Vues Résultats / Enquêtes Satisfaction
-# ============================================================
-
-class ResultatBCListView(ModulePermissionMixin, ListView):
-    model = ResultatBC
-    template_name = 'commercial/resultatbc_list.html'
-    context_object_name = 'resultats'
-    module_name = 'commercial'
-    action_name = 'view'
-
-    def get_queryset(self):
-        return ResultatBC.objects.select_related('client', 'dossier')
+class BLRestaurerView(RestaurerView):
+    model = BonLivraison
+    module_name = 'bon_livraison'
+    success_url = reverse_lazy('commercial:bl_list')
+    success_message = _('Le bon de livraison a été restauré.')
 
 
-class ResultatBCCreateView(ModulePermissionMixin, CreateView):
-    model = ResultatBC
-    form_class = ResultatBCForm
-    template_name = 'commercial/resultatbc_form.html'
-    success_url = reverse_lazy('commercial:resultatbc_list')
-    module_name = 'commercial'
-    action_name = 'add'
-
-    def form_valid(self, form):
-        messages.success(self.request, _("L'enquête de satisfaction client a été enregistrée."))
-        return super().form_valid(form)
+# ResultatBC views déplacées vers l'application marches
 
 
 # ============================================================
@@ -909,6 +1024,20 @@ def bl_toggle_accuse(request, pk):
     bl.save()
     messages.success(request, _("L'état de l'accusé de réception a été mis à jour."))
     return redirect('commercial:bl_list')
+
+
+class BLDetailAjaxView(ModulePermissionMixin, ListView):
+    model = DetailBonLivraison
+    template_name = 'commercial/partials/bl_details.html'
+    context_object_name = 'details'
+    module_name = 'bon_livraison'
+    action_name = 'view'
+
+    def get_queryset(self):
+        bl_id = self.request.GET.get('bl_id')
+        if bl_id:
+            return DetailBonLivraison.objects.filter(bon_livraison_id=bl_id)
+        return DetailBonLivraison.objects.none()
 
 
 

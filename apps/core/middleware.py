@@ -6,6 +6,8 @@ AuditLogMiddleware : injecte les informations de la requête HTTP
 pour être utilisées par AuditableMixin lors des opérations CRUD.
 """
 import threading
+from django.shortcuts import redirect
+from django.urls import resolve, Resolver404
 from apps.core.models import AuditLog
 
 # Stockage thread-local pour partager les données de requête entre le
@@ -71,3 +73,50 @@ class AuditLogMiddleware:
         """Nettoyer le thread local en cas d'exception."""
         _thread_locals.request = None
         return None
+
+
+class ServiceSelectionMiddleware:
+    """
+    Middleware forçant les utilisateurs connectés à choisir un service
+    avant d'accéder au reste de l'application.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            path = request.path_info
+            
+            # Exclusions de redirection
+            is_excluded = False
+            excluded_prefixes = [
+                '/admin/',
+                '/auth/logout/',
+                '/select-service/',
+                '/__debug__/',
+                '/static/',
+                '/media/',
+            ]
+            
+            # Vérification par nom de vue résolue
+            try:
+                resolver_match = resolve(path)
+                view_name = f"{resolver_match.app_name}:{resolver_match.url_name}" if resolver_match.app_name else resolver_match.url_name
+                if view_name in ['core:select_service', 'auth:logout', 'admin:index']:
+                    is_excluded = True
+            except Resolver404:
+                pass
+                
+            # Vérification par préfixe pour le reste (ex: fichiers statiques/medias)
+            for prefix in excluded_prefixes:
+                if path.startswith(prefix) or prefix in path:
+                    is_excluded = True
+                    break
+                    
+            if not is_excluded:
+                # Si aucun service n'est sélectionné dans la session, rediriger
+                if 'selected_service' not in request.session:
+                    return redirect('core:select_service')
+                    
+        return self.get_response(request)
+

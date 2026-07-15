@@ -19,11 +19,127 @@
             <p class="page-subtitle">{% trans "Contrats à long terme et grilles tarifaires négociées" %}</p>
         </div>
         <div>
+            {% if perms_module.peut_ajouter %}
             <a href="{% url 'commercial:convention_create' %}" class="btn btn-primary shadow-sm">
                 <i class="fa-solid fa-plus-circle me-1"></i>
                 {% trans "Nouvelle Convention" %}
             </a>
+            {% endif %}
+            {% if perms_module.peut_annuler %}
+                {% if afficher_annules %}
+                <a href="{% url 'commercial:convention_list' %}" class="btn btn-outline-secondary shadow-sm ms-2">
+                    <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+                </a>
+                {% else %}
+                <a href="?afficher_annules=1" class="btn btn-outline-warning shadow-sm ms-2">
+                    <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+                </a>
+                {% endif %}
+            {% endif %}
         </div>
+    </div>
+</div>
+
+{% if perms_module.peut_voir %}
+<!-- Zone de Filtrage -->
+<div class="card shadow-sm border-0 mb-4" style="background-color: #f1f5f9;">
+    <div class="card-body p-4">
+        <form method="get" id="filterForm" class="row g-3 align-items-end">
+            <!-- Première ligne -->
+            <!-- Client Dropdown et text input -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-secondary">{% trans "Client" %}</label>
+                <div class="input-group">
+                    <select name="client_id" class="form-select select2">
+                        <option value="">{% trans "Tous" %}</option>
+                        {% for c in clients_list %}
+                        <option value="{{ c.id }}" {% if request.GET.client_id == c.id|stringformat:"i" %}selected{% endif %}>{{ c.nom }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="client_nom" class="form-control" placeholder="{% trans 'ou écrire son nom...' %}" value="{{ request.GET.client_nom }}">
+                </div>
+            </div>
+
+            <!-- N° Dossier Dropdown et text input -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-secondary">{% trans "N° Dossiers" %}</label>
+                <div class="input-group">
+                    <select name="dossier_id" class="form-select select2">
+                        <option value="">{% trans "Tous" %}</option>
+                        {% for d in dossiers_list %}
+                        <option value="{{ d.id }}" {% if request.GET.dossier_id == d.id|stringformat:"i" %}selected{% endif %}>{{ d.reference }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="dossier_ref" class="form-control" placeholder="{% trans 'ou écrire réf/projet...' %}" value="{{ request.GET.dossier_ref }}">
+                </div>
+            </div>
+
+            <!-- Validée par client select dropdown -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-secondary">{% trans "Validée par client" %}</label>
+                <select name="validee_par_client" class="form-select">
+                    <option value="tous" {% if request.GET.validee_par_client == 'tous' or not request.GET.validee_par_client %}selected{% endif %}>{% trans "Tous" %}</option>
+                    <option value="oui" {% if request.GET.validee_par_client == 'oui' %}selected{% endif %}>{% trans "Oui" %}</option>
+                    <option value="non" {% if request.GET.validee_par_client == 'non' %}selected{% endif %}>{% trans "Non" %}</option>
+                </select>
+            </div>
+
+            <!-- Deuxième ligne -->
+            <!-- Dates du / au -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-secondary">{% trans "Convention du" %}</label>
+                <div class="input-group">
+                    <input type="date" name="date_du" class="form-control" value="{{ request.GET.date_du }}">
+                    <span class="input-group-text">{% trans "Au" %}</span>
+                    <input type="date" name="date_au" class="form-control" value="{{ request.GET.date_au }}">
+                </div>
+            </div>
+
+            <!-- N° Convention -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">{% trans "N° Convention" %}</label>
+                <input type="text" name="n_convention" class="form-control" placeholder="CONV-..." value="{{ request.GET.n_convention }}">
+            </div>
+
+            <!-- En cours / Annulé radio -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary d-block">{% trans "Statut Annulation" %}</label>
+                <div class="border bg-white rounded p-2 d-flex gap-3 justify-content-center" style="height: 38px; align-items: center;">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="statut_annulation" value="en_cours" id="annulEnCours" {% if request.GET.statut_annulation != 'annule' %}checked{% endif %}>
+                        <label class="form-check-label text-dark fw-semibold small" for="annulEnCours">{% trans "En cours" %}</label>
+                    </div>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="statut_annulation" value="annule" id="annulAnnule" {% if request.GET.statut_annulation == 'annule' %}checked{% endif %}>
+                        <label class="form-check-label text-danger fw-semibold small" for="annulAnnule">{% trans "Annulé" %}</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions buttons -->
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-search"></i> {% trans "Filtrer" %}
+                </button>
+                <a href="{% url 'commercial:convention_list' %}" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cadre Validation de Convention -->
+<div class="row mb-3">
+    <div class="col-md-12 d-flex align-items-center gap-2">
+        <form method="post" action="{% url 'commercial:convention_valider' %}" id="validerConventionForm" class="d-inline-flex align-items-center gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="convention_id" id="selectedConventionId">
+            <span class="fw-bold text-secondary">{% trans "Convention validée" %} :</span>
+            <button type="submit" id="btnValiderConvention" class="btn btn-success shadow-sm d-flex align-items-center justify-content-center p-2 rounded-circle" style="width: 40px; height: 40px;" disabled title="{% trans 'Valider la convention sélectionnée' %}">
+                <i class="fa-solid fa-check fs-5"></i>
+            </button>
+        </form>
     </div>
 </div>
 
@@ -33,49 +149,64 @@
             <table class="table table-hover align-middle w-100" id="conventionsTable">
                 <thead>
                     <tr>
-                        <th>{% trans "Référence" %}</th>
+                        <th>{% trans "Date" %}</th>
+                        <th>{% trans "Numéro" %}</th>
                         <th>{% trans "Client" %}</th>
-                        <th>{% trans "Objet" %}</th>
-                        <th>{% trans "Date Début" %}</th>
-                        <th>{% trans "Date Fin" %}</th>
-                        <th>{% trans "Statut" %}</th>
+                        <th>{% trans "Projet" %}</th>
+                        <th>{% trans "Validée par client" %}</th>
+                        <th>{% trans "État" %}</th>
                         <th class="text-end" style="width: 100px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for convention in conventions %}
-                    <tr>
-                        <td class="fw-bold">{{ convention.reference }}</td>
+                    <tr class="selectable-row" style="cursor: pointer;" data-id="{{ convention.id }}">
+                        <td>{{ convention.date_debut|date:"d/m/Y" }}</td>
+                        <td class="fw-bold text-primary">{{ convention.reference }}</td>
                         <td class="fw-semibold text-dark">{{ convention.client.nom }}</td>
                         <td>{{ convention.objet|truncatechars:45 }}</td>
-                        <td>{{ convention.date_debut|date:"d/m/Y" }}</td>
-                        <td>{{ convention.date_fin|date:"d/m/Y"|default:"-" }}</td>
                         <td>
-                            {% if convention.statut == 'ACTIVE' %}
-                            <span class="badge-status badge-status-success">
-                                <i class="fa-solid fa-circle-check"></i> {{ convention.get_statut_display }}
-                            </span>
-                            {% elif convention.statut == 'SUSPENDUE' %}
-                            <span class="badge-status badge-status-warning">
-                                <i class="fa-solid fa-pause"></i> {{ convention.get_statut_display }}
-                            </span>
+                            {% if convention.validee_par_client %}
+                            <span class="badge bg-success-soft text-success"><i class="fa-solid fa-circle-check me-1"></i>{% trans "Oui" %}</span>
                             {% else %}
-                            <span class="badge-status badge-status-neutral">
-                                <i class="fa-solid fa-ban"></i> {{ convention.get_statut_display }}
-                            </span>
+                            <span class="badge bg-danger-soft text-danger"><i class="fa-solid fa-circle-xmark me-1"></i>{% trans "Non" %}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if convention.est_annule %}
+                            <span class="badge bg-warning">{% trans "Annulé" %}</span>
+                            {% else %}
+                            <span class="badge bg-success">{% trans "Actif" %}</span>
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'commercial:convention_update' convention.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
-                                <i class="fa-solid fa-pencil text-primary"></i>
-                            </a>
+                            <div class="d-inline-flex gap-1">
+                                {% if not convention.est_annule %}
+                                <a href="{% url 'commercial:convention_update' convention.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
+                                    <i class="fa-solid fa-pencil text-primary"></i>
+                                </a>
+                                <form method="post" action="{% url 'commercial:convention_delete' convention.pk %}" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation de cette convention ?" %}')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}">
+                                        <i class="fa-solid fa-ban text-warning"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{% url 'commercial:convention_restore' convention.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}">
+                                        <i class="fa-solid fa-rotate-left text-success"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="7" class="text-center py-4 text-muted">
                             <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
-                            {% trans "Aucune convention enregistrée" %}
+                            {% if afficher_annules %}{% trans "Aucune convention annulée" %}{% else %}{% trans "Aucune convention enregistrée" %}{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -84,12 +215,21 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body py-5 text-center text-muted">
+        <i class="fa-solid fa-eye-slash fa-3x mb-3 text-warning"></i>
+        <h5>{% trans "Accès aux données restreint" %}</h5>
+        <p class="mb-0">{% trans "Vous n'avez pas l'autorisation de voir la liste des conventions." %}</p>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        $('#conventionsTable').DataTable({
+        var table = $('#conventionsTable').DataTable({
             language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
             },
@@ -101,6 +241,22 @@
             dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
                  "<'row'<'col-sm-12'tr>>" +
                  "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        // Logique de sélection de ligne
+        $('#conventionsTable tbody').on('click', 'tr.selectable-row', function () {
+            if ($(this).hasClass('table-primary')) {
+                $(this).removeClass('table-primary');
+                $('#selectedConventionId').val('');
+                $('#btnValiderConvention').prop('disabled', true);
+            } else {
+                table.$('tr.table-primary').removeClass('table-primary');
+                $(this).addClass('table-primary');
+                
+                var id = $(this).data('id');
+                $('#selectedConventionId').val(id);
+                $('#btnValiderConvention').prop('disabled', false);
+            }
         });
     });
 </script>

@@ -8,8 +8,31 @@ Contient :
 """
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.core.serializers.json import DjangoJSONEncoder
+
+
+# ============================================================
+# Managers pour Soft Delete
+# ============================================================
+
+class ActiveManager(models.Manager):
+    """
+    Manager par défaut : exclut les enregistrements annulés.
+    Utilisé pour toutes les requêtes normales (listes, FK, etc.).
+    """
+    def get_queryset(self):
+        return super().get_queryset().filter(est_annule=False)
+
+
+class AllObjectsManager(models.Manager):
+    """
+    Manager complet : inclut les enregistrements annulés.
+    Accessible via Model.objects_all.all()
+    """
+    def get_queryset(self):
+        return super().get_queryset()
 
 
 # ============================================================
@@ -48,6 +71,32 @@ class BaseModel(models.Model):
         blank=True,
         related_name='+',
     )
+
+    # ── Soft Delete (Annulation) ──
+    est_annule = models.BooleanField(
+        _('est annulé'),
+        default=False,
+        db_index=True,
+        help_text=_('Si True, cet enregistrement est annulé (non supprimé physiquement).'),
+    )
+    annule_le = models.DateTimeField(
+        _('annulé le'),
+        null=True,
+        blank=True,
+    )
+    annule_par = models.ForeignKey(
+        'core.User',
+        verbose_name=_('annulé par'),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
+    # Manager actif par défaut (cache les annulés)
+    objects = ActiveManager()
+    # Manager complet (inclut les annulés)
+    objects_all = AllObjectsManager()
 
     class Meta:
         abstract = True
@@ -119,6 +168,8 @@ class AuditLog(models.Model):
         CREATE = 'CREATE', _('Création')
         UPDATE = 'UPDATE', _('Modification')
         DELETE = 'DELETE', _('Suppression')
+        CANCEL = 'CANCEL', _('Annulation')
+        RESTORE = 'RESTORE', _('Restauration')
         LOGIN = 'LOGIN', _('Connexion')
         LOGOUT = 'LOGOUT', _('Déconnexion')
         VALIDATE = 'VALIDATE', _('Validation')

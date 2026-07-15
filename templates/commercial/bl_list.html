@@ -14,81 +14,216 @@
         <div>
             <h1 class="page-title text-primary font-weight-bold">
                 <i class="fa-solid fa-truck-ramp-box text-primary me-2"></i>
-                {% trans "4.1.9 Bon de Livraison" %}
+                {% trans "Bons de Livraison (Bordereaux d'envoi)" %}
             </h1>
             <p class="page-subtitle text-muted">{% trans "Suivi et contrôle de la remise physique des rapports et procès-verbaux" %}</p>
         </div>
         <div>
+            {% if perms_module.peut_ajouter %}
             <a href="{% url 'commercial:bl_create' %}" class="btn btn-primary shadow-sm">
                 <i class="fa-solid fa-plus-circle me-1"></i>
                 {% trans "Créer un BL" %}
             </a>
+            {% endif %}
+            {% if perms_module.peut_annuler %}
+                {% if afficher_annules %}
+                <a href="{% url 'commercial:bl_list' %}" class="btn btn-outline-secondary shadow-sm ms-2">
+                    <i class="fa-solid fa-eye-slash me-1"></i>{% trans "Masquer annulés" %}
+                </a>
+                {% else %}
+                <a href="?afficher_annules=1" class="btn btn-outline-warning shadow-sm ms-2">
+                    <i class="fa-solid fa-eye me-1"></i>{% trans "Voir annulés" %}
+                </a>
+                {% endif %}
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- TOP TABLE: Bons de Livraison -->
+{% if perms_module.peut_voir %}
+<!-- Zone de Filtrage -->
+<div class="card shadow-sm border-0 mb-4" style="background-color: #f1f5f9;">
+    <div class="card-body p-4">
+        <form method="get" id="filterForm" class="row g-3 align-items-end">
+            <!-- Période Date Accusé -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">
+                    <i class="fa-solid fa-envelope me-1"></i>{% trans "Date d'accusé" %}
+                </label>
+                <div class="input-group">
+                    <input type="date" name="date_acc_du" class="form-control" value="{{ request.GET.date_acc_du }}" placeholder="Du">
+                    <span class="input-group-text">{% trans "Au" %}</span>
+                    <input type="date" name="date_acc_au" class="form-control" value="{{ request.GET.date_acc_au }}" placeholder="Au">
+                </div>
+            </div>
+
+            <!-- Période Date Envoi -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">{% trans "Envoi du" %}</label>
+                <div class="input-group">
+                    <input type="date" name="date_env_du" class="form-control" value="{{ request.GET.date_env_du }}">
+                    <span class="input-group-text">{% trans "Au" %}</span>
+                    <input type="date" name="date_env_au" class="form-control" value="{{ request.GET.date_env_au }}">
+                </div>
+            </div>
+
+            <!-- Client select et Recherche libre -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-secondary">{% trans "Client / Destinataire" %}</label>
+                <div class="input-group">
+                    <select name="client_id" class="form-select select2">
+                        <option value="">{% trans "Tous les clients" %}</option>
+                        {% for c in clients_list %}
+                        <option value="{{ c.id }}" {% if request.GET.client_id == c.id|stringformat:"i" %}selected{% endif %}>{{ c.nom }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="recherche_txt" class="form-control" placeholder="{% trans 'N° BL ou Client...' %}" value="{{ request.GET.recherche_txt }}">
+                </div>
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 mb-0">
+                    <i class="fa-solid fa-search"></i> {% trans "Filtrer" %}
+                </button>
+            </div>
+
+            <!-- Deuxième ligne de filtres -->
+            <!-- N° Dossier -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">{% trans "N° Dossier" %}</label>
+                <select name="dossier_id" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for d in dossiers_list %}
+                    <option value="{{ d.id }}" {% if request.GET.dossier_id == d.id|stringformat:"i" %}selected{% endif %}>{{ d.reference }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Etat dossier -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary">{% trans "Etat dossier" %}</label>
+                <select name="etat_dossier" class="form-select">
+                    <option value="">{% trans "Tous" %}</option>
+                    {% for val, label in etat_dossier_choices %}
+                    <option value="{{ val }}" {% if request.GET.etat_dossier == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Statut Envoi (Radios) -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary d-block">{% trans "Envoi" %}</label>
+                <div class="border bg-white rounded p-2 d-flex gap-2 justify-content-center" style="height: 38px; align-items: center;">
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="statut_envoi" value="tous" id="envTous" {% if request.GET.statut_envoi != 'envoye' and request.GET.statut_envoi != 'non_envoye' %}checked{% endif %}>
+                        <label class="form-check-label small" for="envTous">{% trans "Tous" %}</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="statut_envoi" value="envoye" id="envOui" {% if request.GET.statut_envoi == 'envoye' %}checked{% endif %}>
+                        <label class="form-check-label small" for="envOui">{% trans "Envoyé" %}</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="statut_envoi" value="non_envoye" id="envNon" {% if request.GET.statut_envoi == 'non_envoye' %}checked{% endif %}>
+                        <label class="form-check-label small" for="envNon">{% trans "Non Envoi" %}</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statut Accusé (Radios) -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-secondary d-block">{% trans "Accusé" %}</label>
+                <div class="border bg-white rounded p-2 d-flex gap-2 justify-content-center" style="height: 38px; align-items: center;">
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="statut_accuse" value="tous" id="accTous" {% if request.GET.statut_accuse != 'accuse' and request.GET.statut_accuse != 'non_accuse' %}checked{% endif %}>
+                        <label class="form-check-label small" for="accTous">{% trans "Tous" %}</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="statut_accuse" value="accuse" id="accOui" {% if request.GET.statut_accuse == 'accuse' %}checked{% endif %}>
+                        <label class="form-check-label small" for="accOui">{% trans "Accusé" %}</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="statut_accuse" value="non_accuse" id="accNon" {% if request.GET.statut_accuse == 'non_accuse' %}checked{% endif %}>
+                        <label class="form-check-label small" for="accNon">{% trans "Non Acc" %}</label>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- SECTION : Table des bons de livraisons -->
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 text-dark fw-bold">{% trans "Bons de Livraison Émis" %}</h5>
+        <h5 class="card-title mb-0 text-dark fw-bold">{% trans "Table des bons de livraisons" %}</h5>
     </div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-hover align-middle w-100" id="blsTable">
-                <thead style="background-color: #e6edf7; color: #1a3052;">
+                <thead style="background-color: #2e75b6; color: white;">
                     <tr>
+                        <th>{% trans "ID" %}</th>
                         <th>{% trans "Référence" %}</th>
                         <th>{% trans "Date" %}</th>
-                        <th>{% trans "Nom" %}</th>
+                        <th>{% trans "Nom (Destinataire)" %}</th>
                         <th>{% trans "Saisie le" %}</th>
                         <th>{% trans "Date d'envoi" %}</th>
                         <th>{% trans "Envoi par" %}</th>
-                        <th class="text-center" style="width: 130px;">{% trans "Envoyé" %}</th>
+                        <th class="text-center" style="width: 100px;">{% trans "Envoyé" %}</th>
                         <th class="text-center" style="width: 100px;">{% trans "Accusé" %}</th>
                         <th class="text-end" style="width: 120px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for bl in bls %}
-                    <tr>
+                    <tr class="selectable-row" style="cursor: pointer;" data-id="{{ bl.id }}">
+                        <td>{{ bl.id }}</td>
                         <td class="fw-bold text-primary">{{ bl.reference }}</td>
                         <td>{{ bl.date_bl|date:"d/m/Y" }}</td>
-                        <td>{{ bl.destinataire }}</td>
+                        <td class="fw-semibold text-dark">{{ bl.destinataire }}</td>
                         <td>{{ bl.saisie_le|date:"d/m/Y H:i" }}</td>
                         <td>{{ bl.date_envoi|date:"d/m/Y"|default:"-" }}</td>
                         <td>{{ bl.envoi_par|default:"-" }}</td>
                         <td class="text-center">
                             {% if bl.envoye %}
-                            <span class="badge bg-success-soft text-success"><i class="fa-solid fa-check"></i> {% trans "Oui" %}</span>
+                            <span class="badge bg-success-soft text-success"><i class="fa-solid fa-circle-check"></i> {% trans "Oui" %}</span>
                             {% else %}
-                            <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2" data-bs-toggle="modal" data-bs-target="#sendModal{{ bl.id }}">
+                            <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#sendModal{{ bl.id }}">
                                 <i class="fa-solid fa-paper-plane me-1"></i> {% trans "Envoyer" %}
                             </button>
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            <form method="post" action="{% url 'commercial:bl_toggle_accuse' bl.pk %}" style="display:inline;">
+                            <form method="post" action="{% url 'commercial:bl_toggle_accuse' bl.pk %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-link p-0 border-0" style="text-decoration:none;" title="{% trans "Basculer l'état d'accusé" %}">
+                                <button type="submit" class="btn btn-link p-0 border-0 align-middle">
                                     {% if bl.accuse %}
-                                    <span class="badge bg-success-soft text-success" style="cursor:pointer;"><i class="fa-solid fa-check"></i></span>
+                                    <span class="badge bg-success-soft text-success"><i class="fa-solid fa-check"></i></span>
                                     {% else %}
-                                    <span class="badge bg-danger-soft text-danger" style="cursor:pointer;"><i class="fa-solid fa-xmark"></i></span>
+                                    <span class="badge bg-danger-soft text-danger"><i class="fa-solid fa-xmark"></i></span>
                                     {% endif %}
                                 </button>
                             </form>
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-1">
-                                <a href="{% url 'commercial:bl_detail' bl.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Détail' %}">
-                                    <i class="fa-solid fa-eye text-secondary"></i>
-                                </a>
+                                {% if not bl.est_annule %}
                                 <a href="{% url 'commercial:bl_update' bl.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Modifier' %}">
                                     <i class="fa-solid fa-pencil text-primary"></i>
                                 </a>
-                                <a href="{% url 'commercial:bl_delete' bl.pk %}" class="btn btn-sm btn-icon" title="{% trans 'Supprimer' %}">
-                                    <i class="fa-solid fa-trash text-danger"></i>
-                                </a>
+                                <form method="post" action="{% url 'commercial:bl_delete' bl.pk %}" class="d-inline" onsubmit="return confirm('{% trans "Confirmer l\'annulation ?" %}')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Annuler' %}">
+                                        <i class="fa-solid fa-ban text-warning"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{% url 'commercial:bl_restore' bl.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-icon" title="{% trans 'Restaurer' %}">
+                                        <i class="fa-solid fa-rotate-left text-success"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -126,9 +261,9 @@
 
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">
+                        <td colspan="10" class="text-center py-4 text-muted">
                             <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>
-                            {% trans "Aucun bon de livraison enregistré" %}
+                            {% if afficher_annules %}{% trans "Aucun bon de livraison annulé" %}{% else %}{% trans "Aucun bon de livraison enregistré" %}{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -137,4 +272,147 @@
         </div>
     </div>
 </div>
+
+<!-- SECTION : Table des détails des bons de livraisons -->
+<div class="card shadow-sm border-0 mb-4 d-none" id="detailsSection">
+    <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 text-dark fw-bold">{% trans "Table des détails des bons de livraisons" %}</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle w-100">
+                <thead style="background-color: #2e75b6; color: white;">
+                    <tr>
+                        <th>{% trans "DESIGNATION" %}</th>
+                        <th>{% trans "Ref Rapport" %}</th>
+                        <th class="text-center" style="width: 100px;">{% trans "Nombre Exemplaire" %}</th>
+                        <th>{% trans "Observation" %}</th>
+                    </tr>
+                </thead>
+                <tbody id="blDetailsBody">
+                    <!-- Dynamically populated via AJAX -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Panneau inférieur Notification & Suivi -->
+<div class="card shadow-sm border-0 mb-4 p-4 d-none" id="notificationPanel" style="background-color: #f8fafc;">
+    <div class="row align-items-center">
+        <!-- Sélection mode envoi -->
+        <div class="col-md-6 border-end">
+            <label class="form-label fw-bold text-secondary mb-3">{% trans "Sélection mode envoi situation" %} :</label>
+            <div class="d-flex gap-4 mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="mode_envoi" id="modeEmail" value="email" checked>
+                    <label class="form-check-label fw-semibold text-dark" for="modeEmail">Email</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="mode_envoi" id="modeWhatsapp" value="whatsapp">
+                    <label class="form-check-label fw-semibold text-dark" for="modeWhatsapp">WhatsApp</label>
+                </div>
+            </div>
+            <div class="mb-0">
+                <label for="inputEmailTel" class="form-label fw-bold text-secondary small">{% trans "Email ou tel" %}</label>
+                <input type="text" class="form-control" id="inputEmailTel" placeholder="Ex: client@mail.com ou +2126...">
+            </div>
+        </div>
+
+        <!-- Suivi Statuts -->
+        <div class="col-md-6 ps-4">
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-secondary">{% trans "Bordereau envoyé" %}</span>
+                    <span id="badgeEnvoye" class="badge bg-secondary">{% trans "Non" %}</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-secondary">{% trans "Bordereau accusé" %}</span>
+                    <span id="badgeAccuse" class="badge bg-secondary">{% trans "Non" %}</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-secondary">{% trans "Suivi des envois" %}</span>
+                    <span id="txtSuivi" class="text-muted small">{% trans "En attente d'envoi" %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body py-5 text-center text-muted">
+        <i class="fa-solid fa-eye-slash fa-3x mb-3 text-warning"></i>
+        <h5>{% trans "Accès aux données restreint" %}</h5>
+        <p class="mb-0">{% trans "Vous n'avez pas l'autorisation de voir la liste des bons de livraison." %}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        var table = $('#blsTable').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            pageLength: 25,
+            order: [[0, 'desc']],
+            dom: "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-3'<'col-md-5'i><'col-md-7 d-flex justify-content-end'p>>"
+        });
+
+        // Logique de sélection de ligne
+        $('#blsTable tbody').on('click', 'tr.selectable-row', function () {
+            if ($(this).hasClass('table-primary')) {
+                $(this).removeClass('table-primary');
+                $('#detailsSection').addClass('d-none');
+                $('#notificationPanel').addClass('d-none');
+            } else {
+                table.$('tr.table-primary').removeClass('table-primary');
+                $(this).addClass('table-primary');
+
+                var id = $(this).data('id');
+                
+                // Charger les détails en AJAX
+                $.ajax({
+                    url: "{% url 'commercial:ajax_load_bl_details' %}",
+                    data: { 'bl_id': id },
+                    success: function(data) {
+                        $('#blDetailsBody').html(data);
+                        $('#detailsSection').removeClass('d-none');
+                    }
+                });
+
+                // Mettre à jour le panneau de notification inférieur
+                // On peut lire le contenu des colonnes
+                var rowCells = $(this).find('td');
+                var ref = $(rowCells[1]).text();
+                var envoyeText = $(rowCells[7]).text().trim();
+                var accuseText = $(rowCells[8]).text().trim();
+                var dateEnv = $(rowCells[5]).text().trim();
+                var coursier = $(rowCells[6]).text().trim();
+
+                // Mettre à jour les statuts
+                if (envoyeText.includes("Oui")) {
+                    $('#badgeEnvoye').text("Oui").removeClass('bg-secondary').addClass('bg-success');
+                    $('#txtSuivi').text("Envoyé le " + dateEnv + " par " + coursier);
+                } else {
+                    $('#badgeEnvoye').text("Non").removeClass('bg-success').addClass('bg-secondary');
+                    $('#txtSuivi').text("En attente d'envoi");
+                }
+
+                if (accuseText.includes("✓") || !accuseText.includes("x") && accuseText !== "" && !accuseText.includes("Non")) {
+                    $('#badgeAccuse').text("Oui").removeClass('bg-secondary').addClass('bg-success');
+                } else {
+                    $('#badgeAccuse').text("Non").removeClass('bg-success').addClass('bg-secondary');
+                }
+
+                $('#notificationPanel').removeClass('d-none');
+            }
+        });
+    });
+</script>
 {% endblock %}

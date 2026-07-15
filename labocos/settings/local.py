@@ -20,10 +20,17 @@ DEBUG = True
 import sys
 TESTING = 'test' in sys.argv or any('pytest' in arg for arg in sys.argv)
 
-if not TESTING:
+# Import debug_toolbar conditionally
+try:
+    import debug_toolbar  # noqa: F401
+    has_debug_toolbar = True
+except ImportError:
+    has_debug_toolbar = False
+
+if not TESTING and has_debug_toolbar:
     INSTALLED_APPS += ['debug_toolbar']  # noqa: F405
     MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']  # noqa: F405
-    INTERNAL_IPS = ['127.0.0.1', '::1']
+    INTERNAL_IPS = ['127.0.0.1', '::1', '172.16.0.0/12', '10.0.0.0/8', '192.168.0.0/16'] # Add docker subnets to internal IPs
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
     }

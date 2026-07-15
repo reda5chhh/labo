@@ -11,8 +11,7 @@ from crispy_forms.layout import Layout, Row, Column, Submit, Field, HTML
 
 from .models import (
     Client, RevueDemande, Devis, Dossier, Convention,
-    AOSoumission, AOAdjuge, Decompte, Caution,
-    BonLivraison, DetailBonLivraison, ResultatBC, DetailDevis
+    BonLivraison, DetailBonLivraison, DetailDevis
 )
 
 
@@ -228,7 +227,7 @@ class RevueDemandeForm(BaseLaboCOSForm):
 class DevisForm(BaseLaboCOSForm):
     class Meta:
         model = Devis
-        exclude = ['created_by', 'updated_by', 'montant_ht', 'montant_tva', 'montant_ttc']
+        exclude = ['created_by', 'updated_by', 'montant_ht', 'montant_tva', 'montant_ttc', 'reception_bc']
         widgets = {
             'date_devis': forms.DateInput(attrs={'type': 'date'}),
             'objet': forms.Textarea(attrs={'rows': 3, 'placeholder': 'PROJET'}),
@@ -258,10 +257,9 @@ class DevisForm(BaseLaboCOSForm):
                 Column('type_devis', css_class='form-group col-md-4 mb-3'),
             ),
             Row(
-                Column('taux_tva', css_class='form-group col-md-3 mb-3'),
-                Column('validite_jours', css_class='form-group col-md-3 mb-3'),
-                Column('statut', css_class='form-group col-md-3 mb-3'),
-                Column('reception_bc', css_class='form-group col-md-3 mb-3 d-flex align-items-center mt-3'),
+                Column('taux_tva', css_class='form-group col-md-4 mb-3'),
+                Column('validite_jours', css_class='form-group col-md-4 mb-3'),
+                Column('statut', css_class='form-group col-md-4 mb-3'),
             ),
             Row(
                 Column('ref_bc', css_class='form-group col-md-4 mb-3'),
@@ -314,7 +312,8 @@ class DossierForm(BaseLaboCOSForm):
                 Column('date_os', css_class='form-group col-md-6 mb-3'),
             ),
             Row(
-                Column('client', css_class='form-group col-md-12 mb-3'),
+                Column('client', css_class='form-group col-md-6 mb-3'),
+                Column('devis', css_class='form-group col-md-6 mb-3'),
             ),
             Row(
                 Column('entreprise', css_class='form-group col-md-12 mb-3'),
@@ -364,8 +363,9 @@ class ConventionForm(BaseLaboCOSForm):
         super().__init__(*args, **kwargs)
         self.helper.layout = Layout(
             Row(
-                Column('client', css_class='form-group col-md-8 mb-3'),
-                Column('statut', css_class='form-group col-md-4 mb-3'),
+                Column('client', css_class='form-group col-md-6 mb-3'),
+                Column('statut', css_class='form-group col-md-3 mb-3'),
+                Column('validee_par_client', css_class='form-group col-md-3 mb-3'),
             ),
             Row(
                 Column('objet', css_class='form-group col-md-12 mb-3'),
@@ -380,137 +380,7 @@ class ConventionForm(BaseLaboCOSForm):
         )
 
 
-# ============================================================
-# Formulaire AOSoumission
-# ============================================================
-
-class AOSoumissionForm(BaseLaboCOSForm):
-    class Meta:
-        model = AOSoumission
-        exclude = ['created_by', 'updated_by']
-        widgets = {
-            'remarques': forms.Textarea(attrs={'rows': 3}),
-            'date_limite': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper.layout = Layout(
-            Row(
-                Column('reference_ao', css_class='form-group col-md-4 mb-3'),
-                Column('client', css_class='form-group col-md-8 mb-3'),
-            ),
-            Row(
-                Column('objet', css_class='form-group col-md-12 mb-3'),
-            ),
-            Row(
-                Column('date_limite', css_class='form-group col-md-4 mb-3'),
-                Column('estimation_initiale', css_class='form-group col-md-4 mb-3'),
-                Column('montant_soumission', css_class='form-group col-md-4 mb-3'),
-            ),
-            Row(
-                Column('statut', css_class='form-group col-md-4 mb-3'),
-                Column('remarques', css_class='form-group col-md-8 mb-3'),
-            ),
-        )
-
-
-# ============================================================
-# Formulaire AOAdjuge
-# ============================================================
-
-class AOAdjugeForm(BaseLaboCOSForm):
-    class Meta:
-        model = AOAdjuge
-        exclude = ['created_by', 'updated_by']
-        widgets = {
-            'date_adjudication': forms.DateInput(attrs={'type': 'date'}),
-            'date_notification': forms.DateInput(attrs={'type': 'date'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper.layout = Layout(
-            Row(
-                Column('ao_soumission', css_class='form-group col-md-8 mb-3'),
-                Column('date_adjudication', css_class='form-group col-md-4 mb-3'),
-            ),
-            Row(
-                Column('montant_final', css_class='form-group col-md-6 mb-3'),
-                Column('caution_definitive_deposee', css_class='form-group col-md-6 mb-3 d-flex align-items-center pt-3'),
-            ),
-            Row(
-                Column('date_notification', css_class='form-group col-md-6 mb-3'),
-                Column('statut', css_class='form-group col-md-6 mb-3'),
-            ),
-        )
-
-
-# ============================================================
-# Formulaire Decompte
-# ============================================================
-
-class DecompteForm(BaseLaboCOSForm):
-    class Meta:
-        model = Decompte
-        exclude = ['created_by', 'updated_by', 'reference']
-        widgets = {
-            'date_decompte': forms.DateInput(attrs={'type': 'date'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper.layout = Layout(
-            Row(
-                Column('dossier', css_class='form-group col-md-6 mb-3'),
-                Column('ao_adjuge', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('numero_decompte', css_class='form-group col-md-4 mb-3'),
-                Column('date_decompte', css_class='form-group col-md-4 mb-3'),
-                Column('statut', css_class='form-group col-md-4 mb-3'),
-            ),
-            Row(
-                Column('montant_ht', css_class='form-group col-md-4 mb-3'),
-                Column('montant_tva', css_class='form-group col-md-4 mb-3'),
-                Column('montant_ttc', css_class='form-group col-md-4 mb-3'),
-            ),
-        )
-
-
-# ============================================================
-# Formulaire Caution
-# ============================================================
-
-class CautionForm(BaseLaboCOSForm):
-    class Meta:
-        model = Caution
-        exclude = ['created_by', 'updated_by']
-        widgets = {
-            'date_depot': forms.DateInput(attrs={'type': 'date'}),
-            'date_mainlevee': forms.DateInput(attrs={'type': 'date'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper.layout = Layout(
-            Row(
-                Column('ao_soumission', css_class='form-group col-md-6 mb-3'),
-                Column('ao_adjuge', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('banque', css_class='form-group col-md-6 mb-3'),
-                Column('type_caution', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('montant', css_class='form-group col-md-4 mb-3'),
-                Column('date_depot', css_class='form-group col-md-4 mb-3'),
-                Column('date_mainlevee', css_class='form-group col-md-4 mb-3'),
-            ),
-            Row(
-                Column('statut', css_class='form-group col-md-4 mb-3'),
-            ),
-        )
+# Formulaires de Marchés déplacés vers l'application marches
 
 
 # ============================================================
@@ -518,23 +388,45 @@ class CautionForm(BaseLaboCOSForm):
 # ============================================================
 
 class BonLivraisonForm(BaseLaboCOSForm):
+    client_nom = forms.CharField(
+        label=_('Client'),
+        required=False,
+        widget=forms.TextInput(attrs={'readonly': 'readonly', 'class': 'form-control-plaintext bg-light p-2 border rounded'}),
+    )
+
     class Meta:
         model = BonLivraison
         exclude = ['created_by', 'updated_by', 'reference']
         widgets = {
             'date_bl': forms.DateInput(attrs={'type': 'date'}),
+            'date_envoi': forms.DateInput(attrs={'type': 'date'}),
+            'objet': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.dossier:
+            if self.instance.dossier.client:
+                self.fields['client_nom'].initial = self.instance.dossier.client.nom
+
         self.helper.layout = Layout(
             Row(
-                Column('dossier', css_class='form-group col-md-8 mb-3'),
                 Column('date_bl', css_class='form-group col-md-4 mb-3'),
+                Column('dossier', css_class='form-group col-md-8 mb-3'),
+            ),
+            Row(
+                Column('client_nom', css_class='form-group col-md-12 mb-3'),
+            ),
+            Row(
+                Column('objet', css_class='form-group col-md-12 mb-3'),
             ),
             Row(
                 Column('destinataire', css_class='form-group col-md-8 mb-3'),
                 Column('statut', css_class='form-group col-md-4 mb-3'),
+            ),
+            Row(
+                Column('envoi_par', css_class='form-group col-md-8 mb-3'),
+                Column('date_envoi', css_class='form-group col-md-4 mb-3'),
             ),
         )
 
@@ -559,39 +451,7 @@ class DetailBonLivraisonForm(BaseLaboCOSForm):
         )
 
 
-# ============================================================
-# Formulaire ResultatBC
-# ============================================================
-
-class ResultatBCForm(BaseLaboCOSForm):
-    class Meta:
-        model = ResultatBC
-        exclude = ['created_by', 'updated_by']
-        widgets = {
-            'date_evaluation': forms.DateInput(attrs={'type': 'date'}),
-            'commentaires': forms.Textarea(attrs={'rows': 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['client'].widget.attrs.update({
-            'hx-get': '/commercial/ajax/load-dossiers/',
-            'hx-target': '#id_dossier',
-            'hx-trigger': 'change'
-        })
-        self.helper.layout = Layout(
-            Row(
-                Column('client', css_class='form-group col-md-6 mb-3'),
-                Column('dossier', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('date_evaluation', css_class='form-group col-md-6 mb-3'),
-                Column('note_satisfaction', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('commentaires', css_class='form-group col-md-12 mb-3'),
-            ),
-        )
+# ResultatBCForm déplacé vers l'application marches
 
 
 # ============================================================

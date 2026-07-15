@@ -10,7 +10,10 @@ django.setup()
 from django.contrib.auth import get_user_model
 from apps.commercial.models import (
     Client, RevueDemande, Devis, DetailDevis, Dossier,
-    Convention, AOSoumission, AOAdjuge, BonLivraison, Caution
+    Convention, BonLivraison
+)
+from apps.marches.models import (
+    AOSoumission, AOAdjuge, Caution
 )
 from django.utils import timezone
 from datetime import timedelta
@@ -22,11 +25,11 @@ User = get_user_model()
 admin = User.objects.create_superuser(
     username='admin',
     email='admin@labocos.ma',
-    password='admin123',
+    password='Admin123!',
     first_name='Mohamed',
     last_name='ALAMI',
 )
-print("✅ Superuser 'admin' created (password: admin123)")
+print("✅ Superuser 'admin' created (password: Admin123!)")
 
 # Additional users
 u2 = User.objects.create_user(username='technicien1', password='tech123', first_name='Youssef', last_name='BENALI', email='youssef@labocos.ma')

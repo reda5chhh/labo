@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gestion des Droits d'Accès" %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="#">{% trans "Service Informatique" %}</a></li>
+<li class="breadcrumb-item"><a href="{% url 'gestion_droits_acces:user_list' %}">{% trans "Utilisateurs" %}</a></li>
+<li class="breadcrumb-item active">{% trans "Droits d'accès" %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title text-primary">
+                <i class="fa-solid fa-shield-halved me-2"></i>{% trans "Matrice des Droits d'Accès" %}
+            </h1>
+            <p class="page-subtitle text-muted">{% trans "Gérer individuellement les privilèges d'accès de chaque utilisateur" %}</p>
+        </div>
+        <div>
+            <a href="{% url 'gestion_droits_acces:user_list' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-users me-1"></i>{% trans "Liste des Utilisateurs" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- SELECTION UTILISATEUR -->
+<div class="card shadow-sm border-0 mb-4 bg-light">
+    <div class="card-body">
+        <form method="get" class="row align-items-center g-3">
+            <div class="col-md-8 col-sm-12">
+                <label for="userSelect" class="form-label small fw-bold text-secondary text-uppercase">
+                    {% trans "Sélectionner un utilisateur pour modifier ses droits" %}
+                </label>
+                <select name="user_id" id="userSelect" class="form-select" onchange="this.form.submit()">
+                    <option value="">{% trans "-- Choisir un utilisateur --" %}</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if selected_user.id == u.id %}selected{% endif %}>
+                        {{ u.get_full_name|default:u.username }} ({{ u.username }}) - {{ u.fonction|default:"Sans fonction" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if selected_user %}
+            <div class="col-md-4 col-sm-12 d-flex align-items-end mt-4 pt-1">
+                <div class="alert alert-info py-2 px-3 mb-0 w-100 border-0">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    {% if selected_user.is_superuser %}
+                    <strong>Superuser :</strong> {% trans "Accès total permanent." %}
+                    {% elif selected_user.est_admin %}
+                    <strong>Admin :</strong> {% trans "Accès total aux modules d'administration." %}
+                    {% else %}
+                    <strong>{% trans "Utilisateur standard" %}</strong>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% if selected_user %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-dark fw-bold">
+                {% trans "Droits d'accès pour :" %} <span class="text-primary">{{ selected_user.nom_complet }}</span>
+            </h5>
+            <span class="badge bg-secondary">{{ selected_user.username }}</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 35%;">{% trans "Service / Module" %}</th>
+                        <th class="text-center" style="width: 15%;">{% trans "Voir" %}</th>
+                        <th class="text-center" style="width: 15%;">{% trans "Ajouter" %}</th>
+                        <th class="text-center" style="width: 15%;">{% trans "Modifier" %}</th>
+                        <th class="text-center" style="width: 15%;">{% trans "Annuler" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in matrix %}
+                    <!-- En-tête de Service -->
+                    <tr class="table-secondary fw-bold text-dark">
+                        <td colspan="5">
+                            <i class="fa-solid fa-folder me-2"></i>{{ group.service_label }}
+                        </td>
+                    </tr>
+                    
+                    {% for row in group.modules %}
+                    <tr>
+                        <td class="ps-4 text-dark">
+                            <i class="fa-solid fa-cube text-muted me-2 small"></i>{{ row.module_label }}
+                            <code class="text-muted ms-2 float-end small">{{ row.module_id }}</code>
+                        </td>
+                        
+                        <!-- VOIR -->
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input toggle-permission-switch" type="checkbox" role="switch"
+                                       data-user-id="{{ selected_user.id }}"
+                                       data-service="{{ group.service_id }}"
+                                       data-module="{{ row.module_id }}"
+                                       data-permission="peut_voir"
+                                       {% if row.peut_voir or selected_user.is_superuser %}checked{% endif %}
+                                       {% if selected_user.is_superuser %}disabled{% endif %}>
+                            </div>
+                        </td>
+                        
+                        <!-- AJOUTER -->
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input toggle-permission-switch" type="checkbox" role="switch"
+                                       data-user-id="{{ selected_user.id }}"
+                                       data-service="{{ group.service_id }}"
+                                       data-module="{{ row.module_id }}"
+                                       data-permission="peut_ajouter"
+                                       {% if row.peut_ajouter or selected_user.is_superuser %}checked{% endif %}
+                                       {% if selected_user.is_superuser %}disabled{% endif %}>
+                            </div>
+                        </td>
+                        
+                        <!-- MODIFIER -->
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input toggle-permission-switch" type="checkbox" role="switch"
+                                       data-user-id="{{ selected_user.id }}"
+                                       data-service="{{ group.service_id }}"
+                                       data-module="{{ row.module_id }}"
+                                       data-permission="peut_modifier"
+                                       {% if row.peut_modifier or selected_user.is_superuser %}checked{% endif %}
+                                       {% if selected_user.is_superuser %}disabled{% endif %}>
+                            </div>
+                        </td>
+                        
+                        <!-- ANNULER -->
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input toggle-permission-switch" type="checkbox" role="switch"
+                                       data-user-id="{{ selected_user.id }}"
+                                       data-service="{{ group.service_id }}"
+                                       data-module="{{ row.module_id }}"
+                                       data-permission="peut_annuler"
+                                       {% if row.peut_annuler or selected_user.is_superuser %}checked{% endif %}
+                                       {% if selected_user.is_superuser %}disabled{% endif %}>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="permissionToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fa-solid fa-check-circle me-2"></i><span id="toastMessage">{% trans "Permission mise à jour avec succès !" %}</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning text-center border-0 shadow-sm py-4">
+    <i class="fa-solid fa-users fa-2x d-block mb-3 text-warning"></i>
+    <h5>{% trans "Aucun utilisateur sélectionné" %}</h5>
+    <p class="mb-0 text-muted">{% trans "Veuillez choisir un utilisateur dans la liste déroulante ci-dessus pour gérer ses droits d'accès." %}</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const switches = document.querySelectorAll(".toggle-permission-switch");
+    const toastEl = document.getElementById("permissionToast");
+    const toastMsg = document.getElementById("toastMessage");
+    
+    // Get csrf token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    switches.forEach(sw => {
+        sw.addEventListener("change", function() {
+            const userId = this.getAttribute("data-user-id");
+            const service = this.getAttribute("data-service");
+            const module = this.getAttribute("data-module");
+            const permission = this.getAttribute("data-permission");
+            const checked = this.checked;
+            const self = this;
+
+            const formData = new FormData();
+            formData.append("user_id", userId);
+            formData.append("service", service);
+            formData.append("module", module);
+            formData.append("permission", permission);
+
+            // Disable switch during request
+            self.disabled = true;
+
+            fetch("{% url 'gestion_droits_acces:toggle_droit' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrftoken
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                self.disabled = false;
+                if (data.ok) {
+                    self.checked = data.value;
+                    toastEl.classList.remove("bg-danger");
+                    toastEl.classList.add("bg-success");
+                    toastMsg.textContent = "{% trans 'Permission mise à jour avec succès !' %}";
+                    const toast = new bootstrap.Toast(toastEl);
+                    toast.show();
+                } else {
+                    self.checked = !checked; // revert
+                    toastEl.classList.remove("bg-success");
+                    toastEl.classList.add("bg-danger");
+                    toastMsg.textContent = data.error || "{% trans 'Une erreur est survenue.' %}";
+                    const toast = new bootstrap.Toast(toastEl);
+                    toast.show();
+                }
+            })
+            .catch(error => {
+                self.disabled = false;
+                self.checked = !checked; // revert
+                toastEl.classList.remove("bg-success");
+                toastEl.classList.add("bg-danger");
+                toastMsg.textContent = "{% trans 'Erreur de communication avec le serveur.' %}";
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
